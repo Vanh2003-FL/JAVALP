@@ -59,5 +59,4 @@ org.openremote.manager.firmware.FirmwareInfoDetailPersistenceService
 org.openremote.manager.firmware.FirmwareInfoAssetPersistenceService
 org.openremote.manager.itSupport.ItSupportPersistenceService
 org.openremote.manager.blog.BlogPersistenceService
-org.openremote.manager.news_category.NewsCategoryPersistenceService
-org.openremote.manager.live_stream_channel.LiveStreamChannelPersistenceService
+

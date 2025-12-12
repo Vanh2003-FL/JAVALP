@@ -126,11 +126,10 @@ services:
     #devices:
     #  - /dev/ttyACM0
     ports:
-      - "9000:9000" # Web server port
-    #  - "8080:8080" # Web server port
-    #  - "8000:8000" # Remote debugging port - NOT FOR PRODUCTION USE!!!
-    #  - "8085:8085" # JMX port - FOR DIAGNOSTICS ONLY!!!
-    #  - "127.0.0.1:8405:8405" # Localhost metrics access
+      - "8080:8080" # Web server port
+      - "8000:8000" # Remote debugging port - NOT FOR PRODUCTION USE!!!
+      - "8085:8085" # JMX port - FOR DIAGNOSTICS ONLY!!!
+      - "8405:8405" # Localhost metrics access
     logging:
       options:
         # Use very little logging for container STDOUT, this is
@@ -157,8 +156,8 @@ services:
       OR_SETUP_TYPE: ${OR_SETUP_TYPE}
 
       # The public HOSTNAME and SSL PORT of this manager
+      OR_SSL_PORT: ${OR_SSL_PORT:--1}
       OR_HOSTNAME: 171.254.94.141
-      OR_SSL_PORT: -1
 
       # Additional hostnames that should be allowed to access the auth server
       OR_ADDITIONAL_HOSTNAMES: ${OR_ADDITIONAL_HOSTNAMES:-}
@@ -193,8 +192,7 @@ services:
       OR_WEBSERVER_LISTEN_HOST: ${OR_WEBSERVER_LISTEN_HOST:-0.0.0.0}
 
       # Manager web server port (default: 8080)
-      OR_WEBSERVER_LISTEN_PORT: ${OR_WEBSERVER_LISTEN_PORT:-9000}
-      #      OR_WEBSERVER_LISTEN_PORT: ${OR_WEBSERVER_LISTEN_PORT:-8080}
+      OR_WEBSERVER_LISTEN_PORT: ${OR_WEBSERVER_LISTEN_PORT:-8080}
 
       # Comma separated list of manager web server CORS allowed origins (can be a prefix, exact match or wildcard *)
       # These are in addition to the OR_HOSTNAME and OR_ADDITIONAL_HOSTNAMES which are implicitly allowed
@@ -225,11 +223,11 @@ services:
 
       # The service-internal host name and port of the keycloak identity provider; defaults:
       OR_KEYCLOAK_HOST: ${OR_KEYCLOAK_HOST:-keycloak}
-      OR_KEYCLOAK_PORT: ${OR_KEYCLOAK_PORT:-8081}
+      OR_KEYCLOAK_PORT: ${OR_KEYCLOAK_PORT:-8080}
 
       # Keycloak frontend host name, port and path (defaults: to OR_HOSTNAME:OR_SSL_PORT/auth)
       KC_HOSTNAME: 171.254.94.141
-      KC_HOSTNAME_PORT: keycloak
+      KC_HOSTNAME_PORT: 8081
       KC_HOSTNAME_PATH: auth
 
       # Location of built in web content.
@@ -329,11 +327,23 @@ services:
   keycloak:
     image: openremote/keycloak:${KEYCLOAK_VERSION:-latest}
     restart: always
+    # Map any custom themes into the /deployment/keycloak/themes dir:
+    #volumes:
+    # Map custom themes
+    # - ../deployment:/deployment
+    # - deployment-data:/deployment
     ports:
-      - "8081:8080"
+      - "8081:8080" # Web server port - MỞ PORT 8081
     environment:
+
+      # It is important that all services have the same timezone and are time synchronized.
+      # Bearer tokens are only valid for minutes, and authentication fails if Keycloak drifts
       TZ: ${TZ:-Asia/Ho_Chi_Minh}
+
+      # Switch to debug to diagnose Keycloak problems; default:
       KC_LOG_LEVEL: ${KC_LOG_LEVEL:-info}
+
+      # Configure how Keycloak connects to the database
       KC_DB_URL_HOST: ${KC_DB_URL_HOST:-postgresql}
       KC_DB_URL_PORT: ${KC_DB_URL_PORT:-5432}
       KC_DB_URL_DATABASE: ${KC_DB_URL_DATABASE:-openremote}
@@ -341,22 +351,34 @@ services:
       KC_DB_USERNAME: ${KC_DB_USERNAME:-postgres}
       KC_DB_PASSWORD: ${KC_DB_PASSWORD:-postgres@HDItech}
 
+      # Configure web server - QUAN TRỌNG: THÊM CẤU HÌNH HTTP
       KC_HOSTNAME: 171.254.94.141
       KC_HOSTNAME_PORT: 8081
-      KC_HOSTNAME_PATH: auth
+      KC_HOSTNAME_PATH: ${KC_HOSTNAME_PATH:-auth}
+      KC_HOSTNAME_ADMIN: ${KC_HOSTNAME_ADMIN:-}
+      KC_PROXY: none
 
-      KC_PROXY: none          # Tắt proxy ép HTTPS
-      KC_HTTP_ENABLED: true   # Bật HTTP
-      PROXY_ADDRESS_FORWARDING: "false"  # Tắt đọc X-Forwarded-Proto
-      KEYCLOAK_FRONTEND_URL: "http://171.254.94.141:8081/"
+      # THÊM CÁC DÒNG SAU ĐỂ DISABLE HTTPS REDIRECT
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HOSTNAME_STRICT_BACKCHANNEL: false
+      KC_HTTP_ENABLED: true
+      KC_HTTPS_ENABLED: false
 
+      # Configure main user credentials (only on first startup)
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-loaphuong@2025}
+      # Custom startup options (see keycloak documentation)
       KEYCLOAK_START_COMMAND: ${KEYCLOAK_START_COMMAND:-start}
-      KEYCLOAK_START_OPTS: "--http-enabled=true --hostname-strict=false"
+      KEYCLOAK_START_OPTS: ${KEYCLOAK_START_OPTS:-}
+      # Default themes to use
+      KEYCLOAK_DEFAULT_THEME: ${KEYCLOAK_DEFAULT_THEME:-openremote}
+      KEYCLOAK_ACCOUNT_THEME: ${KEYCLOAK_ACCOUNT_THEME:-openremote}
+      KEYCLOAK_WELCOME_THEME: ${KEYCLOAK_WELCOME_THEME:-keycloak}
 
+      # Custom JVM options (increase heap size if required)
+      JAVA_OPTS: ${KEYCLOAK_JAVA_OPTS:-}
 
-    # PostgreSQL DBMS
+  # PostgreSQL DBMS
   postgresql:
     image: openremote/postgresql:${POSTGRESQL_VERSION:-latest}
     restart: always
@@ -390,5 +412,5 @@ services:
   tileserver:
     image: openremote/tileserver:${TILESERVER_VERSION:-latest}
     restart: always
-    #ports:
-    #  - "8082:80" # Web server port
+    ports:
+      - "8082:80" # Web server port - MỞ PORT 8082
