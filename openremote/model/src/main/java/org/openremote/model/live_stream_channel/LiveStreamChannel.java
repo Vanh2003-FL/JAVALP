@@ -36,8 +36,8 @@ public class LiveStreamChannel {
     @Column(name = "realm_id", length = 36)
     private String realmId;
 
-    @Column(length = 50)
-    private String status;
+    @Column
+    private Integer status;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Ho_Chi_Minh")
     @Column(name = "created_at")
@@ -58,7 +58,7 @@ public class LiveStreamChannel {
 
     public LiveStreamChannel() {}
 
-    public LiveStreamChannel(Long id, String title, String url, Boolean isShare, Long areaId, String status) {
+    public LiveStreamChannel(Long id, String title, String url, Boolean isShare, Long areaId, Integer status) {
         this.id = id;
         this.title = title;
         this.url = url;
@@ -68,7 +68,7 @@ public class LiveStreamChannel {
     }
 
     public LiveStreamChannel(Long id, String title, String url, Boolean isShare, Long areaId, String note,
-                            Long sourceId, Long channelId, String realmId, String status,
+                            Long sourceId, Long channelId, String realmId, Integer status,
                             Timestamp createdAt, Timestamp updatedAt, String createdBy, String updatedBy, Boolean isDeleted) {
         this.id = id;
         this.title = title;
@@ -159,11 +159,11 @@ public class LiveStreamChannel {
         this.realmId = realmId;
     }
 
-    public String getStatus() {
+    public Integer getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(Integer status) {
         this.status = status;
     }
 

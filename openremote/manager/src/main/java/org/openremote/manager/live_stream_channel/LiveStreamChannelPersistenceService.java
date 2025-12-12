@@ -48,21 +48,23 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
                     ? user.getId()
                     : "admin";
 
-            Long id = (Long) em.createNativeQuery(
+            Object result = em.createNativeQuery(
                             "INSERT INTO openremote.live_stream_channel " +
-                                    "(title, url, is_share, area_id, note, source_id, channel_id, realm_id, status, created_by, created_at) " +
-                                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now()) RETURNING id")
+                                    "(title, url, is_share, area_id, status) " +
+                                    "VALUES (?, ?, ?, ?, ?) RETURNING id")
                     .setParameter(1, channel.getTitle())
                     .setParameter(2, channel.getUrl())
                     .setParameter(3, channel.getShare() != null ? channel.getShare() : false)
                     .setParameter(4, channel.getAreaId())
-                    .setParameter(5, channel.getNote())
-                    .setParameter(6, channel.getSourceId())
-                    .setParameter(7, channel.getChannelId())
-                    .setParameter(8, channel.getRealmId())
-                    .setParameter(9, channel.getStatus())
-                    .setParameter(10, createdBy)
+                    .setParameter(5, channel.getStatus())
                     .getSingleResult();
+
+            Long id;
+            if (result instanceof Number) {
+                id = ((Number) result).longValue();
+            } else {
+                id = Long.parseLong(result.toString());
+            }
 
             channel.setId(id);
             return channel;
@@ -82,21 +84,14 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
 
             em.createNativeQuery(
                             "UPDATE openremote.live_stream_channel " +
-                                    "SET title = ?, url = ?, is_share = ?, area_id = ?, note = ?, " +
-                                    "source_id = ?, channel_id = ?, realm_id = ?, status = ?, " +
-                                    "updated_by = ?, updated_at = now() " +
+                                    "SET title = ?, url = ?, is_share = ?, area_id = ?, status = ? " +
                                     "WHERE id = ?")
                     .setParameter(1, channel.getTitle())
                     .setParameter(2, channel.getUrl())
                     .setParameter(3, channel.getShare())
                     .setParameter(4, channel.getAreaId())
-                    .setParameter(5, channel.getNote())
-                    .setParameter(6, channel.getSourceId())
-                    .setParameter(7, channel.getChannelId())
-                    .setParameter(8, channel.getRealmId())
-                    .setParameter(9, channel.getStatus())
-                    .setParameter(10, updatedBy)
-                    .setParameter(11, channel.getId())
+                    .setParameter(5, channel.getStatus())
+                    .setParameter(6, channel.getId())
                     .executeUpdate();
 
             return channel;
@@ -114,12 +109,12 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
                     "SELECT c.id, c.title, c.url, c.is_share, c.area_id, c.status " +
                             "FROM openremote.live_stream_channel c WHERE c.is_deleted = false");
 
-            // Filter theo title hoặc status
+            // Filter theo title
             if (validationUtils.isValid(dto.getKeyWord())) {
-                sql.append(" AND (c.title ILIKE :keyword OR c.status ILIKE :keyword)");
+                sql.append(" AND c.title ILIKE :keyword");
             }
 
-            sql.append(" ORDER BY c.created_at DESC");
+            sql.append(" ORDER BY c.id DESC");
 
             Query query = em.createNativeQuery(sql.toString(), LiveStreamChannel.class);
 
@@ -171,7 +166,7 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
             String sql = "SELECT c.id, c.title, c.url, c.is_share, c.area_id, c.status " +
                     "FROM openremote.live_stream_channel c " +
                     "WHERE c.area_id = :areaId AND c.is_deleted = false " +
-                    "ORDER BY c.created_at DESC";
+                    "ORDER BY c.id DESC";
 
             return (List<LiveStreamChannel>) em.createNativeQuery(sql, LiveStreamChannel.class)
                     .setParameter("areaId", areaId)
@@ -226,7 +221,7 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
                     "SELECT COUNT(*) FROM openremote.live_stream_channel c WHERE c.is_deleted = false");
 
             if (validationUtils.isValid(dto.getKeyWord())) {
-                sql.append(" AND (c.title ILIKE :keyword OR c.status ILIKE :keyword)");
+                sql.append(" AND c.title ILIKE :keyword");
             }
 
             Query query = em.createNativeQuery(sql.toString());
@@ -248,7 +243,7 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
 
             int updated = em.createNativeQuery(
                             "UPDATE openremote.live_stream_channel " +
-                                    "SET is_deleted = true, updated_at = now() " +
+                                    "SET is_deleted = true " +
                                     "WHERE id = :id")
                     .setParameter("id", channelId)
                     .executeUpdate();
