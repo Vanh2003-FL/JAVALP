@@ -60,4 +60,3 @@ org.openremote.manager.firmware.FirmwareInfoAssetPersistenceService
 org.openremote.manager.itSupport.ItSupportPersistenceService
 org.openremote.manager.blog.BlogPersistenceService
 org.openremote.manager.news_category.NewsCategoryPersistenceService
-org.openremote.manager.broadcast_history.BroadcastHistoryPersistenceService
