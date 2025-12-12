@@ -1,0 +1,19 @@
+version: '2.4'
+
+services:
+  keycloak:
+    image: vucsl/openremote_keycloak:latest
+    extends:
+      file: /vucsl/projects/build-docker/deploy.yml
+      service: keycloak
+    volumes:
+      - /vucsl/projects/deployment:/deployment
+      - /etc/localtime:/etc/localtime:ro  # Mount localtime
+      - /etc/timezone/timezone:/etc/timezone:ro    # Mount timezone
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: "Asia/Ho_Chi_Minh"
+      KC_HOSTNAME_STRICT_HTTPS: 'false'
+      KC_HOSTNAME_PORT: ${KC_HOSTNAME_PORT:-8080}
+      KEYCLOAK_START_OPTS: --spi-theme-static-max-age=-1 --spi-theme-cache-themes=false --spi-theme-cache-templates=false
