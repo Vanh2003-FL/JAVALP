@@ -1,0 +1,95 @@
+CREATE OR REPLACE FUNCTION reportPowerVoltage10(
+    start_time TIMESTAMP,
+    end_time TIMESTAMP,
+    assetLightId TEXT,
+    compareDate BOOLEAN
+)
+RETURNS TABLE (
+    light_id VARCHAR(22),
+    output_time TEXT,
+    wattage NUMERIC,
+    amperage NUMERIC,
+    voltage NUMERIC,
+    parent_asset_name VARCHAR,
+    light_code VARCHAR(30)
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH filtered_data AS (
+        SELECT
+            ap.entity_id,
+            ap.attribute_name,
+            ap.value::numeric AS value,
+            ap.timestamp AS ts
+        FROM asset_datapoint_extend ap
+        WHERE ap.entity_id = assetLightId
+          AND ap.timestamp BETWEEN start_time AND end_time
+          AND ap.attribute_name IN ('wattageActual', 'amperage', 'voltage')
+    ),
+    grouped_data AS (
+        SELECT
+            entity_id,
+            CASE
+                WHEN compareDate THEN date_trunc('hour', ts)
+                ELSE date_trunc('day', ts)
+            END AS group_time,
+            attribute_name,
+            value,
+            ts
+        FROM filtered_data
+    ),
+    wattage_range_per_group AS (
+        SELECT
+            group_time,
+            MAX(CASE WHEN attribute_name = 'wattageActual' THEN value END) FILTER (WHERE ts = max_ts) AS last_value,
+            MAX(CASE WHEN attribute_name = 'wattageActual' THEN value END) FILTER (WHERE ts = min_ts) AS first_value
+        FROM (
+            SELECT
+                group_time,
+                attribute_name,
+                value,
+                ts,
+                FIRST_VALUE(ts) OVER (PARTITION BY group_time ORDER BY ts ASC) AS min_ts,
+                LAST_VALUE(ts) OVER (PARTITION BY group_time ORDER BY ts ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS max_ts
+            FROM grouped_data
+            WHERE attribute_name = 'wattageActual'
+        ) sub
+        GROUP BY group_time
+    ),
+    wattage_diff AS (
+        SELECT
+            group_time,
+            COALESCE(last_value, 0) - COALESCE(first_value, 0) AS wattage
+        FROM wattage_range_per_group
+    ),
+    average_data AS (
+        SELECT
+            entity_id,
+            group_time,
+            AVG(CASE WHEN attribute_name = 'amperage' THEN value END) AS amperage,
+            AVG(CASE WHEN attribute_name = 'voltage' THEN value END) AS voltage
+        FROM grouped_data
+        GROUP BY entity_id, group_time
+    )
+SELECT
+    ad.entity_id AS light_id,
+    TO_CHAR(ad.group_time, CASE WHEN compareDate THEN 'YYYY-MM-DD HH24' ELSE 'YYYY-MM-DD' END) AS output_time,
+    wd.wattage,
+    ad.amperage,
+    ad.voltage,
+    a2.name AS parent_asset_name,
+    info.asset_code
+FROM average_data ad
+         LEFT JOIN wattage_diff wd ON wd.group_time = ad.group_time
+         LEFT JOIN asset a1 ON ad.entity_id = a1.id
+         LEFT JOIN asset a2 ON
+        a2.id = (
+        CASE
+            WHEN POSITION('.' IN a1.path::text) > 0 THEN SPLIT_PART(a1.path::text, '.', 1)
+            ELSE a1.path::text
+            END
+        )
+         LEFT JOIN asset_info info ON ad.entity_id = info.id
+ORDER BY ad.group_time;
+END;
+$$ LANGUAGE plpgsql;

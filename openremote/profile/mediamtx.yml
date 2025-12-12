@@ -1,0 +1,19 @@
+# Tắt các giao thức không sử dụng để tiết kiệm tài nguyên
+rtmpDisable: yes
+
+# Bật các giao thức cần thiết
+rtsp: yes
+hls: yes
+webrtc: yes
+
+# Cấu hình đường dẫn (paths).
+# 'all_users' là một mẫu chung cho phép bất kỳ luồng nào được xuất bản.
+# 'cam1' là một đường dẫn tĩnh được cấu hình sẵn để kéo luồng từ một camera cụ thể.
+paths:
+  all_users:
+  # Cấu hình mặc định cho các luồng được xuất bản động
+
+  cam1:
+    # Kéo luồng từ một camera IP đã biết khi máy chủ khởi động
+    source: rtsp://admin:hditech2025@192.168.1.40:554/cam/realmonitor?channel=1&subtype=0
+    sourceOnDemand: no
