@@ -9,32 +9,32 @@ import java.sql.Timestamp;
 @Table(name = "live_stream_channel", schema = "openremote")
 public class LiveStreamChannel {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(length = 36)
+    private String id;
 
-    @Column(length = 255)
+    @Column(length = 100)
     private String title;
 
-    @Column(length = 500)
+    @Column(length = 150)
     private String url;
 
     @Column(name = "is_share")
     private Boolean isShare = false;
 
-    @Column(name = "area_id")
-    private Long areaId;
+    @Column(name = "area_id", length = 36)
+    private String areaId;
 
     @Column(columnDefinition = "text")
-    private String note;
+    private String description;
 
-    @Column(name = "source_id")
-    private Long sourceId;
+    @Column(name = "source_id", length = 36)
+    private String sourceId;
 
-    @Column(name = "channel_id")
-    private Long channelId;
+    @Column(name = "channel_id", length = 36)
+    private String channelId;
 
-    @Column(name = "realm_id", length = 36)
-    private String realmId;
+    @Column(name = "realm_name", length = 150)
+    private String realmName;
 
     @Column
     private Integer status;
@@ -58,7 +58,7 @@ public class LiveStreamChannel {
 
     public LiveStreamChannel() {}
 
-    public LiveStreamChannel(Long id, String title, String url, Boolean isShare, Long areaId, Integer status) {
+    public LiveStreamChannel(String id, String title, String url, Boolean isShare, String areaId, Integer status) {
         this.id = id;
         this.title = title;
         this.url = url;
@@ -67,18 +67,18 @@ public class LiveStreamChannel {
         this.status = status;
     }
 
-    public LiveStreamChannel(Long id, String title, String url, Boolean isShare, Long areaId, String note,
-                            Long sourceId, Long channelId, String realmId, Integer status,
+    public LiveStreamChannel(String id, String title, String url, Boolean isShare, String areaId, String description,
+                            String sourceId, String channelId, String realmName, Integer status,
                             Timestamp createdAt, Timestamp updatedAt, String createdBy, String updatedBy, Boolean isDeleted) {
         this.id = id;
         this.title = title;
         this.url = url;
         this.isShare = isShare;
         this.areaId = areaId;
-        this.note = note;
+        this.description = description;
         this.sourceId = sourceId;
         this.channelId = channelId;
-        this.realmId = realmId;
+        this.realmName = realmName;
         this.status = status;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -87,11 +87,11 @@ public class LiveStreamChannel {
         this.isDeleted = isDeleted;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -119,44 +119,44 @@ public class LiveStreamChannel {
         isShare = share;
     }
 
-    public Long getAreaId() {
+    public String getAreaId() {
         return areaId;
     }
 
-    public void setAreaId(Long areaId) {
+    public void setAreaId(String areaId) {
         this.areaId = areaId;
     }
 
-    public String getNote() {
-        return note;
+    public String getDescription() {
+        return description;
     }
 
-    public void setNote(String note) {
-        this.note = note;
+    public void setDescription(String description) {
+        this.description = description;
     }
 
-    public Long getSourceId() {
+    public String getSourceId() {
         return sourceId;
     }
 
-    public void setSourceId(Long sourceId) {
+    public void setSourceId(String sourceId) {
         this.sourceId = sourceId;
     }
 
-    public Long getChannelId() {
+    public String getChannelId() {
         return channelId;
     }
 
-    public void setChannelId(Long channelId) {
+    public void setChannelId(String channelId) {
         this.channelId = channelId;
     }
 
-    public String getRealmId() {
-        return realmId;
+    public String getRealmName() {
+        return realmName;
     }
 
-    public void setRealmId(String realmId) {
-        this.realmId = realmId;
+    public void setRealmName(String realmName) {
+        this.realmName = realmName;
     }
 
     public Integer getStatus() {

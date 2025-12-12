@@ -48,23 +48,24 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
                     ? user.getId()
                     : "admin";
 
-            Object result = em.createNativeQuery(
-                            "INSERT INTO openremote.live_stream_channel " +
-                                    "(title, url, is_share, area_id, status) " +
-                                    "VALUES (?, ?, ?, ?, ?) RETURNING id")
-                    .setParameter(1, channel.getTitle())
-                    .setParameter(2, channel.getUrl())
-                    .setParameter(3, channel.getShare() != null ? channel.getShare() : false)
-                    .setParameter(4, channel.getAreaId())
-                    .setParameter(5, channel.getStatus())
-                    .getSingleResult();
+            String id = java.util.UUID.randomUUID().toString();
 
-            Long id;
-            if (result instanceof Number) {
-                id = ((Number) result).longValue();
-            } else {
-                id = Long.parseLong(result.toString());
-            }
+            em.createNativeQuery(
+                            "INSERT INTO openremote.live_stream_channel " +
+                                    "(id, title, url, is_share, area_id, description, source_id, channel_id, realm_name, status, created_by, created_at) " +
+                                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())")
+                    .setParameter(1, id)
+                    .setParameter(2, channel.getTitle())
+                    .setParameter(3, channel.getUrl())
+                    .setParameter(4, channel.getShare() != null ? channel.getShare() : false)
+                    .setParameter(5, channel.getAreaId())
+                    .setParameter(6, channel.getDescription())
+                    .setParameter(7, channel.getSourceId())
+                    .setParameter(8, channel.getChannelId())
+                    .setParameter(9, channel.getRealmName())
+                    .setParameter(10, channel.getStatus())
+                    .setParameter(11, createdBy)
+                    .executeUpdate();
 
             channel.setId(id);
             return channel;
@@ -84,14 +85,21 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
 
             em.createNativeQuery(
                             "UPDATE openremote.live_stream_channel " +
-                                    "SET title = ?, url = ?, is_share = ?, area_id = ?, status = ? " +
+                                    "SET title = ?, url = ?, is_share = ?, area_id = ?, description = ?, " +
+                                    "source_id = ?, channel_id = ?, realm_name = ?, status = ?, " +
+                                    "updated_by = ?, updated_at = now() " +
                                     "WHERE id = ?")
                     .setParameter(1, channel.getTitle())
                     .setParameter(2, channel.getUrl())
                     .setParameter(3, channel.getShare())
                     .setParameter(4, channel.getAreaId())
-                    .setParameter(5, channel.getStatus())
-                    .setParameter(6, channel.getId())
+                    .setParameter(5, channel.getDescription())
+                    .setParameter(6, channel.getSourceId())
+                    .setParameter(7, channel.getChannelId())
+                    .setParameter(8, channel.getRealmName())
+                    .setParameter(9, channel.getStatus())
+                    .setParameter(10, updatedBy)
+                    .setParameter(11, channel.getId())
                     .executeUpdate();
 
             return channel;
@@ -137,7 +145,7 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
                          GET BY ID
        ============================================================ */
 
-    public LiveStreamChannel getById(Long id) {
+    public LiveStreamChannel getById(String id) {
         return persistenceService.doReturningTransaction(em -> {
 
             String sql = "SELECT c.id, c.title, c.url, c.is_share, c.area_id, c.status " +
@@ -160,7 +168,7 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
                          GET BY AREA ID
        ============================================================ */
 
-    public List<LiveStreamChannel> getByAreaId(Long areaId) {
+    public List<LiveStreamChannel> getByAreaId(String areaId) {
         return persistenceService.doReturningTransaction(em -> {
 
             String sql = "SELECT c.id, c.title, c.url, c.is_share, c.area_id, c.status " +
@@ -238,7 +246,7 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
                           DELETE
        ============================================================ */
 
-    public boolean deleteLiveStreamChannel(Long channelId) {
+    public boolean deleteLiveStreamChannel(String channelId) {
         return persistenceService.doReturningTransaction(em -> {
 
             int updated = em.createNativeQuery(
