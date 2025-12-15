@@ -157,6 +157,25 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
             String sql = "SELECT lsc.id, lsc.title, lsc.url, lsc.is_share, lsc.area_id, lsc.description, " +
                     "lsc.source_id, lsc.channel_id, lsc.realm_name, lsc.status, " +
                     "lsc.created_by, lsc.created_at, lsc.updated_by, lsc.updated_at " +
+                    "FROM openremote.live_stream_channel lsc " +
+                    "WHERE lsc.id = :id AND lsc.is_deleted = false";
+
+            Query query = em.createNativeQuery(sql, LiveStreamChannel.class)
+                    .setParameter("id", id);
+
+            List<LiveStreamChannel> results = query.getResultList();
+            return results.isEmpty() ? null : results.get(0);
+        });
+    }
+
+    /* ============================================================
+                          COUNT
+       ============================================================ */
+    public Long countLiveStreamChannels(SearchFilterDTO<LiveStreamChannel> dto) {
+        return persistenceService.doReturningTransaction(em -> {
+            StringBuilder sql = new StringBuilder(
+                    "SELECT COUNT(*) FROM openremote.live_stream_channel lsc WHERE lsc.is_deleted = false");
+
             // Filter theo keyword (title)
             if (validationUtils.isValid(dto.getKeyWord())) {
                 sql.append(" AND lsc.title ILIKE :keyword");
@@ -183,26 +202,7 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
             }
 
             if (dto.getData() != null && validationUtils.isValid(dto.getData().getAreaId())) {
-                query.setParameter("areaId", dto.getData().getAreaId()
-        });
-    }
-
-    /* ============================================================
-                          COUNT
-       ============================================================ */
-    public Long countLiveStreamChannels(SearchFilterDTO<LiveStreamChannel> dto) {
-        return persistenceService.doReturningTransaction(em -> {
-            StringBuilder sql = new StringBuilder(
-                    "SELECT COUNT(*) FROM openremote.live_stream_channel lsc WHERE lsc.is_deleted = false");
-
-            if (validationUtils.isValid(dto.getKeyWord())) {
-                sql.append(" AND lsc.title ILIKE :keyword");
-            }
-
-            Query query = em.createNativeQuery(sql.toString());
-
-            if (validationUtils.isValid(dto.getKeyWord())) {
-                query.setParameter("keyword", "%" + dto.getKeyWord().trim() + "%");
+                query.setParameter("areaId", dto.getData().getAreaId());
             }
 
             return ((Number) query.getSingleResult()).longValue();
