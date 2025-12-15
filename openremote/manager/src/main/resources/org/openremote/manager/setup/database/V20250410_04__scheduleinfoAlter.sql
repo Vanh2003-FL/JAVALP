@@ -1,5 +1,0 @@
-ALTER TABLE schedule_asset
-    ALTER COLUMN create_date DROP NOT NULL,
-ALTER COLUMN create_by DROP NOT NULL,
-    ALTER COLUMN update_date DROP NOT NULL,
-    ALTER COLUMN update_by DROP NOT NULL;
