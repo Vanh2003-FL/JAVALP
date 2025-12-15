@@ -61,4 +61,5 @@ org.openremote.manager.itSupport.ItSupportPersistenceService
 org.openremote.manager.blog.BlogPersistenceService
 org.openremote.manager.warningMicroIP.WarningMicroIPService
 org.openremote.manager.news_category.NewsCategoryPersistenceService
+org.openremote.manager.livestream.LiveStreamChannelPersistenceService
 
