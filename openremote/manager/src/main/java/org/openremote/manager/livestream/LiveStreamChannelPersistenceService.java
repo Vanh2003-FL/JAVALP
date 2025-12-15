@@ -104,8 +104,8 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
     public List<LiveStreamChannel> getLiveStreamChannels(SearchFilterDTO<LiveStreamChannel> dto) {
         return persistenceService.doReturningTransaction(em -> {
             StringBuilder sql = new StringBuilder(
-                    "SELECT lsc.id, lsc.title, lsc.url, lsc.is_share, lsc.area_id, lsc.description, " +
-                            "lsc.source_id, lsc.channel_id, lsc.realm_name, lsc.status, " +
+                    "SELECT lsc.id, lsc.title, lsc.url, CAST(lsc.is_share AS BOOLEAN), lsc.area_id, lsc.description, " +
+                            "lsc.source_id, lsc.channel_id, lsc.realm_name, CAST(lsc.status AS INTEGER), " +
                             "lsc.created_by, lsc.created_at, lsc.updated_by, lsc.updated_at " +
                             "FROM openremote.live_stream_channel lsc WHERE lsc.is_deleted = false");
 
@@ -154,8 +154,8 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
        ============================================================ */
     public LiveStreamChannel getById(String id) {
         return persistenceService.doReturningTransaction(em -> {
-            String sql = "SELECT lsc.id, lsc.title, lsc.url, lsc.is_share, lsc.area_id, lsc.description, " +
-                    "lsc.source_id, lsc.channel_id, lsc.realm_name, lsc.status, " +
+            String sql = "SELECT lsc.id, lsc.title, lsc.url, CAST(lsc.is_share AS BOOLEAN), lsc.area_id, lsc.description, " +
+                    "lsc.source_id, lsc.channel_id, lsc.realm_name, CAST(lsc.status AS INTEGER), " +
                     "lsc.created_by, lsc.created_at, lsc.updated_by, lsc.updated_at " +
                     "FROM openremote.live_stream_channel lsc " +
                     "WHERE lsc.id = :id AND lsc.is_deleted = false";

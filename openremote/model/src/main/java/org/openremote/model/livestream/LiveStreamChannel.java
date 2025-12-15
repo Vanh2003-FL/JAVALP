@@ -69,6 +69,26 @@ public class LiveStreamChannel {
         this.url = url;
     }
 
+    // Constructor cho JPA mapping từ query result (14 parameters)
+    public LiveStreamChannel(String id, String title, String url, Boolean isShare, String areaId, String description,
+                              String sourceId, String channelId, String realmName, Integer status,
+                              String createdBy, Timestamp createdAt, String updatedBy, Timestamp updatedAt) {
+        this.id = id;
+        this.title = title;
+        this.url = url;
+        this.isShare = isShare;
+        this.areaId = areaId;
+        this.description = description;
+        this.sourceId = sourceId;
+        this.channelId = channelId;
+        this.realmName = realmName;
+        this.status = status;
+        this.createdBy = createdBy;
+        this.createdAt = createdAt;
+        this.updatedBy = updatedBy;
+        this.updatedAt = updatedAt;
+    }
+
     // Getters and Setters
 
     public String getId() {
