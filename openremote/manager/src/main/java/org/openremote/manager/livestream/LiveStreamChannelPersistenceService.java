@@ -43,6 +43,8 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
     public LiveStreamChannel create(LiveStreamChannel channel, User user) {
         return persistenceService.doReturningTransaction(em -> {
             String createdBy = (user != null && user.getId() != null) ? user.getId() : "admin";
+            // Lấy realm_name từ user context, không cho phép user tự set
+            String realmName = (user != null && user.getRealm() != null) ? user.getRealm() : "master";
 
             em.createNativeQuery(
                             "INSERT INTO openremote.live_stream_channel " +
@@ -57,12 +59,13 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
                     .setParameter(6, channel.getDescription())
                     .setParameter(7, channel.getSourceId())
                     .setParameter(8, channel.getChannelId())
-                    .setParameter(9, channel.getRealmName())
+                    .setParameter(9, realmName)
                     .setParameter(10, channel.getStatus())
                     .setParameter(11, createdBy)
                     .executeUpdate();
 
             channel.setCreatedBy(createdBy);
+            channel.setRealmName(realmName);
             return channel;
         });
     }
@@ -77,7 +80,7 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
             em.createNativeQuery(
                             "UPDATE openremote.live_stream_channel " +
                                     "SET title = ?, url = ?, is_share = ?, area_id = ?, description = ?, " +
-                                    "source_id = ?, channel_id = ?, realm_name = ?, status = ?, " +
+                                    "source_id = ?, channel_id = ?, status = ?, " +
                                     "updated_by = ?, updated_at = now() " +
                                     "WHERE id = ?")
                     .setParameter(1, channel.getTitle())
@@ -87,10 +90,9 @@ public class LiveStreamChannelPersistenceService extends RouteBuilder implements
                     .setParameter(5, channel.getDescription())
                     .setParameter(6, channel.getSourceId())
                     .setParameter(7, channel.getChannelId())
-                    .setParameter(8, channel.getRealmName())
-                    .setParameter(9, channel.getStatus())
-                    .setParameter(10, updatedBy)
-                    .setParameter(11, channel.getId())
+                    .setParameter(8, channel.getStatus())
+                    .setParameter(9, updatedBy)
+                    .setParameter(10, channel.getId())
                     .executeUpdate();
 
             channel.setUpdatedBy(updatedBy);
