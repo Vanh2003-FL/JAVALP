@@ -68,4 +68,6 @@ org.openremote.manager.livestream.LiveStreamChannelPersistenceService
 org.openremote.manager.folder.FolderService
 org.openremote.manager.content.ContentService
 org.openremote.manager.playlist.PlaylistService
+org.openremote.manager.schedulehistory.ScheduleHistoryPersistenceService
+org.openremote.manager.schedulehistory.ScheduleHistoryService
 

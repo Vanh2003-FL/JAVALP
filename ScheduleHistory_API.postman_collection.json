@@ -1,0 +1,81 @@
+{
+  "info": {
+    "name": "Schedule History API (Read-Only)",
+    "description": "READ-ONLY API for Schedule History (Lịch sử phát) - Chỉ xem, không có tạo/sửa/xóa",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Get List Histories",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"keyword\": \"\",\n  \"status\": null,\n  \"scheduleId\": \"\",\n  \"page\": 0,\n  \"size\": 10\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/master/schedule-history/get",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "master", "schedule-history", "get"]
+        },
+        "description": "Lấy danh sách lịch sử phát với filter và pagination. Status: 0=Chưa phát, 1=Đang phát, 2=Đã phát, 3=Hủy"
+      }
+    },
+    {
+      "name": "2. Get History By ID",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": \"your-history-id-here\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/master/schedule-history/get-by-id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "master", "schedule-history", "get-by-id"]
+        },
+        "description": "Lấy chi tiết 1 bản ghi lịch sử theo ID"
+      }
+    },
+    {
+      "name": "3. Count Histories",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"keyword\": \"\",\n  \"status\": null,\n  \"scheduleId\": \"\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/master/schedule-history/count",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "master", "schedule-history", "count"]
+        },
+        "description": "Đếm số lượng lịch sử theo filter (dùng cho pagination)"
+      }
+    }
+  ]
+}
