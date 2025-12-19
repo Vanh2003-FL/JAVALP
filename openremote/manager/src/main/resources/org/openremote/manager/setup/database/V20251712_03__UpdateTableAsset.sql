@@ -1,2 +1,0 @@
-ALTER TABLE openremote.asset
-    ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT FALSE;
