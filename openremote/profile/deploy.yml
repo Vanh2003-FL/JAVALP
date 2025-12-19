@@ -34,75 +34,75 @@ services:
   # for any requests for which a certificate doesn't exist. Custom certificates can be volume mapped into
   # /etc/haproxy/certs (note custom certificates must include the full chain including the private key). Can also volume
   # map a custom proxy config file.
-  #  proxy:
-  #    image: openremote/proxy:${PROXY_VERSION:-latest}
-  #    restart: always
-  #    volumes:
-  #      - proxy-data:/deployment
-  #    environment:
-  #
-  #      # It is important that all services have the same timezone and are time synchronized.
-  #      # Bearer tokens are only valid for minutes, and authentication fails if Keycloak drifts.
-  #      TZ: ${TZ:-Asia/Ho_Chi_Minh}
-  #
-  #      # File to which entrypoint logs are written in addition to std out
-  #      LOGFILE: ${PROXY_LOGFILE:-/var/log/proxy.log}
-  #
-  #      # Customize proxy log, defaults to 'notice', requests are logged at 'info'.
-  #      # Available levels are: emerg, alert, crit, err, warning, notice, info, debug
-  #      PROXY_LOGLEVEL: ${PROXY_LOGLEVEL:-info}
-  #
-  #      # IANA TLD subdomain for which an SSL certificate should be requested (leave blank for private/externally
-  #      # generated certificates).
-  #      DOMAINNAME: ${OR_HOSTNAME:-localhost}
-  #
-  #      # IANA TLD comma separated subdomains for which an SSL certificates should be requested (leave blank for
-  #      # private/externally generated certificates); this is an alternative to DOMAINNAME for multiple domains.
-  #      DOMAINNAMES: ${OR_ADDITIONAL_HOSTNAMES:-}
-  #
-  #      # USE A CUSTOM PROXY CONFIG - COPY FROM https://raw.githubusercontent.com/openremote/proxy/main/haproxy.cfg
-  #      HAPROXY_CONFIG: ${HAPROXY_CONFIG:-/etc/haproxy/haproxy.cfg}
-  #
-  #      # Email address for SSL certificate issuance and expiration notifications.
-  #      LE_EMAIL: ${OR_EMAIL_ADMIN:-}
-  #
-  #      # Enable --staging will manage fake certificates, so avoid hitting the rate limits of Let's Encrypt
-  #      # when testing (this is important, you are limited to 5 duplicate certificates per week!)
-  #      # e.g. '--staging'
-  #      LE_EXTRA_ARGS: ${PROXY_EXTRA_ARGS:-}
-  #
-  #      # The proxy supports up to 10 custom redirects from hostname to any path on the
-  #      # manager service.
-  #      # e.g. PROXY_HOST_REDIRECT_1_NAME: www.my-console-master.tld
-  #      #      PROXY_HOST_REDIRECT_1_TARGET: /console/master
-  #      PROXY_HOST_REDIRECT_1_NAME:
-  #      PROXY_HOST_REDIRECT_1_TARGET:
-  #      PROXY_HOST_REDIRECT_2_NAME:
-  #      PROXY_HOST_REDIRECT_2_TARGET:
-  #      PROXY_HOST_REDIRECT_3_NAME:
-  #      PROXY_HOST_REDIRECT_3_TARGET:
-  #      PROXY_HOST_REDIRECT_4_NAME:
-  #      PROXY_HOST_REDIRECT_4_TARGET:
-  #      PROXY_HOST_REDIRECT_5_NAME:
-  #      PROXY_HOST_REDIRECT_5_TARGET:
-  #      PROXY_HOST_REDIRECT_6_NAME:
-  #      PROXY_HOST_REDIRECT_6_TARGET:
-  #      PROXY_HOST_REDIRECT_7_NAME:
-  #      PROXY_HOST_REDIRECT_7_TARGET:
-  #      PROXY_HOST_REDIRECT_8_NAME:
-  #      PROXY_HOST_REDIRECT_8_TARGET:
-  #      PROXY_HOST_REDIRECT_9_NAME:
-  #      PROXY_HOST_REDIRECT_9_TARGET:
-  #      PROXY_HOST_REDIRECT_10_NAME:
-  #      PROXY_HOST_REDIRECT_10_TARGET:
-  #
-  #    # Expose public services (web server, MQTT broker)
-  #    ports:
-  #      - "80:80" # HTTP for letsencrypt cert generation and in general it redirects to 443 for HTTPS
-  #      - "${OR_SSL_PORT:-443}:443" # HTTPS /auth directs to keycloak and other paths direct to manager
-  #      - "8883:8883" # MQTTS
-  #      - "8404:8404" # Localhost metrics access
-  #      - "1883:1883"
+  proxy:
+      image: openremote/proxy:${PROXY_VERSION:-latest}
+      restart: always
+      volumes:
+        - proxy-data:/deployment
+      environment:
+
+        # It is important that all services have the same timezone and are time synchronized.
+        # Bearer tokens are only valid for minutes, and authentication fails if Keycloak drifts.
+        TZ: ${TZ:-Asia/Ho_Chi_Minh}
+
+        # File to which entrypoint logs are written in addition to std out
+        LOGFILE: ${PROXY_LOGFILE:-/var/log/proxy.log}
+
+        # Customize proxy log, defaults to 'notice', requests are logged at 'info'.
+        # Available levels are: emerg, alert, crit, err, warning, notice, info, debug
+        PROXY_LOGLEVEL: ${PROXY_LOGLEVEL:-info}
+
+        # IANA TLD subdomain for which an SSL certificate should be requested (leave blank for private/externally
+        # generated certificates).
+        DOMAINNAME: ${OR_HOSTNAME:-localhost}
+
+        # IANA TLD comma separated subdomains for which an SSL certificates should be requested (leave blank for
+        # private/externally generated certificates); this is an alternative to DOMAINNAME for multiple domains.
+        DOMAINNAMES: ${OR_ADDITIONAL_HOSTNAMES:-}
+
+        # USE A CUSTOM PROXY CONFIG - COPY FROM https://raw.githubusercontent.com/openremote/proxy/main/haproxy.cfg
+        HAPROXY_CONFIG: ${HAPROXY_CONFIG:-/etc/haproxy/haproxy.cfg}
+
+        # Email address for SSL certificate issuance and expiration notifications.
+        LE_EMAIL: ${OR_EMAIL_ADMIN:-}
+
+        # Enable --staging will manage fake certificates, so avoid hitting the rate limits of Let's Encrypt
+        # when testing (this is important, you are limited to 5 duplicate certificates per week!)
+        # e.g. '--staging'
+        LE_EXTRA_ARGS: ${PROXY_EXTRA_ARGS:-}
+
+        # The proxy supports up to 10 custom redirects from hostname to any path on the
+        # manager service.
+        # e.g. PROXY_HOST_REDIRECT_1_NAME: www.my-console-master.tld
+        #      PROXY_HOST_REDIRECT_1_TARGET: /console/master
+        PROXY_HOST_REDIRECT_1_NAME:
+        PROXY_HOST_REDIRECT_1_TARGET:
+        PROXY_HOST_REDIRECT_2_NAME:
+        PROXY_HOST_REDIRECT_2_TARGET:
+        PROXY_HOST_REDIRECT_3_NAME:
+        PROXY_HOST_REDIRECT_3_TARGET:
+        PROXY_HOST_REDIRECT_4_NAME:
+        PROXY_HOST_REDIRECT_4_TARGET:
+        PROXY_HOST_REDIRECT_5_NAME:
+        PROXY_HOST_REDIRECT_5_TARGET:
+        PROXY_HOST_REDIRECT_6_NAME:
+        PROXY_HOST_REDIRECT_6_TARGET:
+        PROXY_HOST_REDIRECT_7_NAME:
+        PROXY_HOST_REDIRECT_7_TARGET:
+        PROXY_HOST_REDIRECT_8_NAME:
+        PROXY_HOST_REDIRECT_8_TARGET:
+        PROXY_HOST_REDIRECT_9_NAME:
+        PROXY_HOST_REDIRECT_9_TARGET:
+        PROXY_HOST_REDIRECT_10_NAME:
+        PROXY_HOST_REDIRECT_10_TARGET:
+
+      # Expose public services (web server, MQTT broker)
+      ports:
+        - "80:80" # HTTP for letsencrypt cert generation and in general it redirects to 443 for HTTPS
+        - "${OR_SSL_PORT:-443}:443" # HTTPS /auth directs to keycloak and other paths direct to manager
+        - "8883:8883" # MQTTS
+        - "8404:8404" # Localhost metrics access
+#        - "1883:1883"
 
   # The OpenRemote Manager
   manager:
@@ -149,6 +149,10 @@ services:
 
       # The password for the super user (admin) of the master realm (must match keycloak password if using
       # the keycloak identity provider).
+      OR_KEYCLOAK_REALM: openremote
+      #OR_ADMIN_USERNAME: admin
+#      OR_KEYCLOAK_CLIENT_ID: openremote
+#      OR_KEYCLOAK_CLIENT_SECRET: wMUSLt6K37YEA0yo0lquYJoXFIMBQmWL
       OR_ADMIN_PASSWORD: loaphuong@2025
 
       # This value is passed to SetupTasks can be used to determine what assets etc. should be setup for this deployment
@@ -158,7 +162,7 @@ services:
 
       # The public HOSTNAME and SSL PORT of this manager
       OR_HOSTNAME: 171.254.94.141
-      OR_SSL_PORT: -1
+      OR_SSL_PORT: 8081
 
       # Additional hostnames that should be allowed to access the auth server
       OR_ADDITIONAL_HOSTNAMES: ${OR_ADDITIONAL_HOSTNAMES:-}
@@ -225,12 +229,13 @@ services:
 
       # The service-internal host name and port of the keycloak identity provider; defaults:
       OR_KEYCLOAK_HOST: ${OR_KEYCLOAK_HOST:-keycloak}
-      OR_KEYCLOAK_PORT: ${OR_KEYCLOAK_PORT:-8081}
+      OR_KEYCLOAK_PORT: ${OR_KEYCLOAK_PORT:-8080}
+#      OR_KEYCLOAK_URL: http://keycloak:8080/auth
 
       # Keycloak frontend host name, port and path (defaults: to OR_HOSTNAME:OR_SSL_PORT/auth)
-      KC_HOSTNAME: 171.254.94.141
-      KC_HOSTNAME_PORT: keycloak
-      KC_HOSTNAME_PATH: auth
+      #KC_HOSTNAME: 171.254.94.141
+      #KC_HOSTNAME_PORT: keycloak
+      #KC_HOSTNAME_PATH: auth
 
       # Location of built in web content.
       OR_APP_DOCROOT: ${OR_APP_DOCROOT:-/opt/web}
@@ -347,7 +352,7 @@ services:
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
 
-      KC_PROXY: none          # Tắt proxy ép HTTPS
+      KC_PROXY: none          # Tắ`t proxy ép HTTPS
       KC_HTTP_ENABLED: true   # Bật HTTP
       PROXY_ADDRESS_FORWARDING: "false"  # Tắt đọc X-Forwarded-Proto
       KEYCLOAK_FRONTEND_URL: "http://171.254.94.141:8081/auth"
@@ -356,6 +361,10 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-loaphuong@2025}
       KEYCLOAK_START_COMMAND: ${KEYCLOAK_START_COMMAND:-start}
       KEYCLOAK_START_OPTS: "--http-enabled=true --hostname-strict=false"
+      KEYCLOAK_DEFAULT_THEME: ${KEYCLOAK_DEFAULT_THEME:-openremote}
+      KEYCLOAK_ACCOUNT_THEME: ${KEYCLOAK_ACCOUNT_THEME:-openremote}
+      KEYCLOAK_WELCOME_THEME: ${KEYCLOAK_WELCOME_THEME:-keycloak}
+
 
 
     # PostgreSQL DBMS

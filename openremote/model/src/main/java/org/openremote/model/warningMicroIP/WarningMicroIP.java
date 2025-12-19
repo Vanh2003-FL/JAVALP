@@ -4,12 +4,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.sql.Timestamp;
+import java.util.UUID;
 
 @Entity
 @Table(name = "micro_ip_device")
 public class WarningMicroIP {
     @Id
-    @Column(name = "id")
+    @Column(name = "id", length = 20)
     private String id;
 
     @Column(name = "device_code")
@@ -23,9 +24,8 @@ public class WarningMicroIP {
 
     @Column(name = "is_locked")
     private Boolean is_locked;
-    @JsonIgnore
     @Column(name = "area_id")
-    private int area_id;
+    private String area_id;
 
     @Column(name = "realm_name")
     private String realm_name;
@@ -48,14 +48,27 @@ public class WarningMicroIP {
 
 
     public WarningMicroIP() {
+        this.id = UUID.randomUUID().toString().replace("-", "").substring(0, 20);
     }
 
-    public WarningMicroIP(String id, String device_code, String device_name, Boolean is_locked, int area_id, String realm_name, String create_by, Timestamp create_at, Timestamp update_at, String update_by, Boolean delete, String area_name) {
+
+    public WarningMicroIP(String id, String device_code, String device_name,Boolean is_locked,String area_id , String area_name, String create_by, Timestamp create_at) {
         this.id = id;
         this.device_code = device_code;
         this.device_name = device_name;
-        this.is_locked = is_locked;
         this.area_name = area_name;
+        this.is_locked = is_locked;
+        this.area_id = area_id;
+        this.create_by = create_by;
+        this.create_at = create_at;
+    }
+
+    public WarningMicroIP(String id, String device_code, String device_name, String area_name, Boolean is_locked, String area_id, String realm_name, String create_by, Timestamp create_at, Timestamp update_at, String update_by, Boolean delete) {
+        this.id = id;
+        this.device_code = device_code;
+        this.device_name = device_name;
+        this.area_name = area_name;
+        this.is_locked = is_locked;
         this.area_id = area_id;
         this.realm_name = realm_name;
         this.create_by = create_by;
@@ -105,11 +118,11 @@ public class WarningMicroIP {
         this.is_locked = is_locked;
     }
 
-    public int getArea_id() {
+    public String getArea_id() {
         return area_id;
     }
 
-    public void setArea_id(int area_id) {
+    public void setArea_id(String area_id) {
         this.area_id = area_id;
     }
 

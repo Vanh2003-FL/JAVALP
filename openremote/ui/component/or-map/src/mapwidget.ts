@@ -1,4 +1,4 @@
-import manager, {DefaultColor4} from "@openremote/core";
+import manager, { DefaultColor4 } from "@openremote/core";
 import maplibregl, {
     AnyLayer,
     Control,
@@ -16,7 +16,7 @@ import maplibregl, {
 } from "maplibre-gl";
 import MaplibreGeocoder from "@maplibre/maplibre-gl-geocoder";
 import "@maplibre/maplibre-gl-geocoder/dist/maplibre-gl-geocoder.css";
-import {debounce} from "lodash";
+import { debounce } from "lodash";
 import {
     ControlPosition,
     OrMapClickedEvent,
@@ -25,10 +25,10 @@ import {
     OrMapLongPressEvent,
     ViewSettings,
 } from "./index";
-import {OrMapMarker} from "./markers/or-map-marker";
-import {getLatLngBounds, getLngLat} from "./util";
-import {GeoJsonConfig, MapType} from "@openremote/model";
-import {Feature, FeatureCollection} from "geojson";
+import { OrMapMarker } from "./markers/or-map-marker";
+import { getLatLngBounds, getLngLat } from "./util";
+import { GeoJsonConfig, MapType } from "@openremote/model";
+import { Feature, FeatureCollection } from "geojson";
 
 const mapboxJsStyles = require("mapbox.js/dist/mapbox.css");
 const maplibreGlStyles = require("maplibre-gl/dist/maplibre-gl.css");
@@ -81,7 +81,7 @@ export class MapWidget {
                 if (this._mapJs) {
                     const latLng = getLngLat(this._center) || (this._viewSettings ? getLngLat(this._viewSettings.center) : undefined);
                     if (latLng) {
-                        this._mapJs.setView(latLng, undefined, {pan: {animate: false}, zoom: {animate: false}});
+                        this._mapJs.setView(latLng, undefined, { pan: { animate: false }, zoom: { animate: false } });
                     }
                 }
                 break;
@@ -153,7 +153,7 @@ export class MapWidget {
         switch (this._type) {
             case MapType.RASTER:
                 if (this._mapJs && this._zoom) {
-                    this._mapJs.setZoom(this._zoom, {animate: false});
+                    this._mapJs.setZoom(this._zoom, { animate: false });
                 }
                 break;
             case MapType.VECTOR:
@@ -201,22 +201,50 @@ export class MapWidget {
     public async loadViewSettings() {
 
         let settingsResponse;
-        if (this._type === MapType.RASTER) {
-            settingsResponse = await manager.rest.api.MapResource.getSettingsJs();
-        } else {
-            settingsResponse = await manager.rest.api.MapResource.getSettings();
+        try {
+            if (this._type === MapType.RASTER) {
+                settingsResponse = await manager.rest.api.MapResource.getSettingsJs();
+            } else {
+                settingsResponse = await manager.rest.api.MapResource.getSettings();
+            }
+            console.log('[MapWidget] API Response:', settingsResponse);
+        } catch (error) {
+            console.error('[MapWidget] Error loading map settings from API:', error);
+            // Return null if API fails - will use default viewSettings
+            return null;
         }
+
         const settings = settingsResponse.data as any;
-        console.log('settings', settings)
+        console.log('[MapWidget] Settings data:', settings);
 
         // Load options for current realm or fallback to default if exist
         const realmName = manager.displayRealm || "default";
-        this._viewSettings = settings.options ? settings.options[realmName] ? settings.options[realmName] : settings.options.default : null;
-        //Add geocodeURl(Manh)
-        if (!this._viewSettings!.geocodeUrl) {
-            this._viewSettings!.geocodeUrl = "https://nominatim.openstreetmap.org"; // Ví dụ dùng Nominatim
+        console.log('[MapWidget] Realm name:', realmName);
+        console.log('[MapWidget] settings.options:', settings?.options);
+
+        this._viewSettings = settings?.options ? settings.options[realmName] ? settings.options[realmName] : settings.options.default : null;
+        console.log('[MapWidget] _viewSettings after realm lookup:', this._viewSettings);
+
+        // Provide default settings if none available
+        if (!this._viewSettings) {
+            console.log('[MapWidget] No _viewSettings found, using defaults');
+            this._viewSettings = {
+                center: [105.8542, 21.0285], // Default center (Hanoi)
+                zoom: 10,
+                minZoom: 1,
+                maxZoom: 20,
+                boxZoom: true,
+                geocodeUrl: "https://nominatim.openstreetmap.org"
+            };
         }
-        //end
+
+        // Add geocodeUrl fallback (only if _viewSettings exists)
+        if (this._viewSettings && !this._viewSettings.geocodeUrl) {
+            this._viewSettings.geocodeUrl = "https://nominatim.openstreetmap.org";
+        }
+
+        console.log('[MapWidget] Final _viewSettings:', this._viewSettings);
+
         if (this._viewSettings) {
 
             // If Map was already present, so only ran during updates such as realm switches
@@ -314,13 +342,46 @@ export class MapWidget {
             const map: typeof import("maplibre-gl") = await import(/* webpackChunkName: "maplibre-gl" */ "maplibre-gl");
             const settings = await this.loadViewSettings();
 
+            // Default style using OpenStreetMap if API returns empty
+            const defaultStyle: StyleGL = {
+                version: 8,
+                sources: {
+                    "osm": {
+                        type: "raster",
+                        tiles: [
+                            "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                            "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                            "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        ],
+                        tileSize: 256,
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }
+                },
+                layers: [
+                    {
+                        id: "osm-tiles",
+                        type: "raster",
+                        source: "osm",
+                        minzoom: 0,
+                        maxzoom: 19
+                    }
+                ]
+            };
+
+            // Use API settings or default style
+            const mapStyle = (settings && typeof settings === 'object' && Object.keys(settings).length > 0)
+                ? settings as StyleGL
+                : defaultStyle;
+
+            console.log('[MapWidget] Using map style:', mapStyle === defaultStyle ? 'default OSM' : 'from API');
+
             const options: OptionsGL = {
                 attributionControl: true,
                 container: this._mapContainer,
-                style: settings as StyleGL,
+                style: mapStyle,
                 transformRequest: (url, resourceType) => {
                     return {
-                        headers: {Authorization: manager.getAuthorizationHeader()},
+                        headers: { Authorization: manager.getAuthorizationHeader() },
                         url
                     };
                 }
@@ -424,7 +485,7 @@ export class MapWidget {
             this._geocoder = new MaplibreGeocoder({
                 forwardGeocode: this._forwardGeocode.bind(this),
                 reverseGeocode: this._reverseGeocode
-            }, {maplibregl: maplibregl, showResultsWhileTyping: true});
+            }, { maplibregl: maplibregl, showResultsWhileTyping: true });
             console.log('_geocoder', this._geocoder)
             // Override the _onKeyDown function from MaplibreGeocoder which has a bug getting the value from the input element
             this._geocoder._onKeyDown = debounce((e: KeyboardEvent) => {
@@ -485,7 +546,7 @@ export class MapWidget {
             //     console.log('selected', selected)
             //     this._onGeocodeChange(selected);
             // });
-            this._geocoder.on('result', (e:any) => {
+            this._geocoder.on('result', (e: any) => {
                 var selected = e.result;
                 console.log('Selected Result:', selected);
                 this._onGeocodeChange(selected);
@@ -775,8 +836,8 @@ export class MapWidget {
                 if (doAdd) {
                     const elem = marker._createMarkerElement();
                     if (elem) {
-                        const icon = L.divIcon({html: elem.outerHTML, className: "or-marker-raster"});
-                        m = L.marker([marker.lat!, marker.lng!], {icon: icon, clickable: marker.interactive});
+                        const icon = L.divIcon({ html: elem.outerHTML, className: "or-marker-raster" });
+                        m = L.marker([marker.lat!, marker.lng!], { icon: icon, clickable: marker.interactive });
                         m.addTo(this._mapJs!);
                         marker._actualMarkerElement = (m as any).getElement() ? (m as any).getElement().firstElementChild as HTMLDivElement : undefined;
                         if (marker.interactive) {

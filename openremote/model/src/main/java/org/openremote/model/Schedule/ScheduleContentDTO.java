@@ -15,6 +15,7 @@ public class ScheduleContentDTO {
     private String entityId;
     private String entityName;
 
+    private String liveUrl;
     // --- CỘT BẠN VỪA NHẮC ĐẾN ---
     // Map vào cột "time_period" (jsonb) của bảng schedule_content
     // Nếu null -> Sẽ hiểu là dùng khung giờ chung của lịch (schedule_info)
@@ -22,13 +23,14 @@ public class ScheduleContentDTO {
     private List<ScheduleTimeFrameDTO> timePeriod;
     public ScheduleContentDTO() {}
 
-    public ScheduleContentDTO(Integer orderBy, Integer number, String duration, String contentType, String entityId, String entityName, List<ScheduleTimeFrameDTO> timePeriod) {
+    public ScheduleContentDTO(Integer orderBy, Integer number, String duration, String contentType, String entityId, String entityName, String liveUrl, List<ScheduleTimeFrameDTO> timePeriod) {
         this.orderBy = orderBy;
         this.number = number;
         this.duration = duration;
         this.contentType = contentType;
         this.entityId = entityId;
         this.entityName = entityName;
+        this.liveUrl = liveUrl;
         this.timePeriod = timePeriod;
     }
 
@@ -86,5 +88,13 @@ public class ScheduleContentDTO {
 
     public void setTimePeriod(List<ScheduleTimeFrameDTO> timePeriod) {
         this.timePeriod = timePeriod;
+    }
+
+    public String getLiveUrl() {
+        return liveUrl;
+    }
+
+    public void setLiveUrl(String liveUrl) {
+        this.liveUrl = liveUrl;
     }
 }

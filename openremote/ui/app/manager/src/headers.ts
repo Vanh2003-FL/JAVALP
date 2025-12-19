@@ -1,7 +1,41 @@
 import { manager } from "@openremote/core";
 import { AppStateKeyed, HeaderItem, OrApp } from "@openremote/or-app";
-import {AnyAction} from "@reduxjs/toolkit";
-import {getMapRoute, getReportRoute,getReportDashboard} from "./routes";
+import { AnyAction } from "@reduxjs/toolkit";
+import { getMapRoute, getReportRoute, getReportDashboard } from "./routes";
+
+export function headerItemAdministration<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem {
+    return {
+        icon: "cog",
+        href: "administration",
+        text: "Quản trị"
+    };
+}
+
+export function headerItemCategoryContent<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem {
+    return {
+        icon: "folder-music",
+        href: "category-content",
+        text: "Chuyên mục và nội dung"
+    };
+}
+
+export function headerItemHome<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem {
+    return {
+        icon: "home",
+        value: "home",
+        href: "home",
+        text: "Home",
+    };
+}
+
+export function headerItemRapport<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem {
+    return {
+        icon: "rapport",
+        value: "rapport",
+        href: "rapport",
+        text: "Rapport",
+    };
+}
 
 export function headerItemMap<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem {
     return {
@@ -138,8 +172,7 @@ export function headerItemUsers<S extends AppStateKeyed, A extends AnyAction>(or
         icon: "account-group",
         value: "users",
         href: "users",
-        text: "user_plural",
-        roles: ["read:admin", "write:admin"]
+        text: "user_plural"
     };
 }
 export function headerItemRoles<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem {
@@ -190,7 +223,7 @@ export function headerItemConfiguration<S extends AppStateKeyed, A extends AnyAc
     };
 }
 
-export function headerItemMasterData<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem{
+export function headerItemMasterData<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem {
     return {
         icon: "database",
         value: "masterData",
@@ -198,7 +231,7 @@ export function headerItemMasterData<S extends AppStateKeyed, A extends AnyActio
         text: "masterdata"
     }
 }
-export function headerItemWarning<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem{
+export function headerItemWarning<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem {
     return {
         icon: "alert",
         value: "warningConfig",
@@ -207,7 +240,7 @@ export function headerItemWarning<S extends AppStateKeyed, A extends AnyAction>(
     }
 }
 
-export function headerItemSchedule<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem{
+export function headerItemSchedule<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem {
     return {
         icon: "calendar-clock",
         value: "schedule",
@@ -216,7 +249,7 @@ export function headerItemSchedule<S extends AppStateKeyed, A extends AnyAction>
     }
 }
 
-export function headerItemitSupport<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem{
+export function headerItemitSupport<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem {
     return {
         icon: "account-wrench",
         value: "itSupport",
@@ -225,7 +258,7 @@ export function headerItemitSupport<S extends AppStateKeyed, A extends AnyAction
     }
 }
 
-export function headerItemBlog<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem{
+export function headerItemBlog<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem {
     return {
         icon: "post",
         value: "blog",
@@ -242,3 +275,13 @@ export function headerItemBlogPublic<S extends AppStateKeyed, A extends AnyActio
         text: "Blog"
     };
 }
+
+export function headerItemBroadcastSchedule<S extends AppStateKeyed, A extends AnyAction>(orApp: OrApp<S>): HeaderItem {
+    return {
+        icon: "calendar-clock",
+        value: "broadcastSchedule",
+        href: "broadcast-schedule",
+        text: "Lịch phát"
+    };
+}
+

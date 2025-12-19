@@ -61,5 +61,11 @@ org.openremote.manager.itSupport.ItSupportPersistenceService
 org.openremote.manager.blog.BlogPersistenceService
 org.openremote.manager.warningMicroIP.WarningMicroIPService
 org.openremote.manager.news_category.NewsCategoryPersistenceService
+org.openremote.manager.area.AreaPersistenceService
+org.openremote.manager.source.SourceService
+org.openremote.manager.channel.ChannelService
 org.openremote.manager.livestream.LiveStreamChannelPersistenceService
+org.openremote.manager.folder.FolderService
+org.openremote.manager.content.ContentService
+org.openremote.manager.playlist.PlaylistService
 

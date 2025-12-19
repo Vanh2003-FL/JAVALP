@@ -247,9 +247,9 @@ public abstract class KeycloakIdentityProvider implements IdentityProvider {
                 if (credentials != null) {
                     LOG.info("Stored credentials successfully generated so using them");
                     if (!setActiveCredentials(credentials)) {
-                        String msg = "Something went wrong trying to use the new stored credentials, cannot proceed";
-                        LOG.warning(msg);
-                        throw new RuntimeException(msg);
+                        //String msg = "Something went wrong trying to use the new stored credentials, cannot proceed";
+                        //LOG.warning(msg);
+                        //throw new RuntimeException(msg);
                     }
                 } else {
                     LOG.info("Failed to generate stored credentials will continue using " + OR_ADMIN_PASSWORD);

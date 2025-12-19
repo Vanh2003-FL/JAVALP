@@ -7,6 +7,8 @@ import org.openremote.manager.security.ManagerIdentityService;
 import org.openremote.manager.web.ManagerWebService;
 import org.openremote.model.Container;
 import org.openremote.model.ContainerService;
+import org.openremote.model.attribute.AttributeWriteFailure;
+import org.openremote.model.district.DistrictException;
 import org.openremote.model.dto.SearchFilterDTO;
 import org.openremote.model.warningMicroIP.WarningMicroIP;
 import org.openremote.model.security.User;
@@ -57,8 +59,8 @@ public class WarningMicroIPService extends RouteBuilder implements ContainerServ
         return persistenceService.doReturningTransaction(em -> {
 
             StringBuilder sql = new StringBuilder(
-                    "SELECT mid.id, mid.device_code, mid.device_name, mid.is_locked,\n" +
-                            "       a.name AS area_name, mid.realm_name,\n" +
+                    "SELECT mid.id, mid.device_code, mid.device_name, mid.is_locked,mid.area_id,\n" +
+                            "       a.name AS area_name,\n" +
                             "       mid.created_by, mid.created_at\n" +
                             "FROM openremote.micro_ip_device mid\n" +
                             "JOIN openremote.area a \n" +
@@ -85,29 +87,22 @@ public class WarningMicroIPService extends RouteBuilder implements ContainerServ
                     params.put("is_locked", f.getIs_locked());
                 }
             }
+            sql.append(" ORDER BY mid.created_at DESC ");
 
-            Query query = em.createNativeQuery(sql.toString());
+
+
+            Query query = em.createNativeQuery(sql.toString(), WarningMicroIP.class);
             params.forEach(query::setParameter);
 
-            List<Object[]> rows = query.getResultList();
-            List<WarningMicroIP> result = new ArrayList<>();
+            if (dto != null && dto.getPage() != null && dto.getSize() != null) {
+                int page = dto.getPage() <= 0 ? 1 : dto.getPage();
+                int size = dto.getSize() <= 0 ? 10 : dto.getSize();
 
-            for (Object[] r : rows) {
-                WarningMicroIP item = new WarningMicroIP();
-
-                item.setId((String) r[0]);
-                item.setDevice_code((String) r[1]);
-                item.setDevice_name((String) r[2]);
-                item.setIs_locked((Boolean) r[3]);
-                item.setArea_name((String) r[4]);
-                item.setRealm_name((String) r[5]);
-                item.setCreate_by((String) r[6]);
-                item.setCreate_at((Timestamp) r[7]);
-
-                result.add(item);
+                query.setFirstResult((page - 1) * size);
+                query.setMaxResults(size);
             }
 
-            return result;
+            return query.getResultList();
         });
     }
 
@@ -115,23 +110,52 @@ public class WarningMicroIPService extends RouteBuilder implements ContainerServ
 
     public WarningMicroIP createWarningMicroIP(WarningMicroIP warningMicroIP) {
         return persistenceService.doReturningTransaction(em -> {
+            if (warningMicroIP.getDevice_code() == null || warningMicroIP.getDevice_code().isEmpty()) {
+                throw new DistrictException(AttributeWriteFailure.ALREADY_EXISTS,
+                        "Mã thiết bị (device_code) không được để trống!"
+                );
+            }
 
-            Query areaQuery = em.createNativeQuery("SELECT id FROM openremote.area WHERE name = :name");
-            areaQuery.setParameter("name", warningMicroIP.getArea_name());
-            Object areaIdObj = areaQuery.getSingleResult();
+            if (warningMicroIP.getDevice_name() == null || warningMicroIP.getDevice_name().isEmpty()) {
+                throw new DistrictException(AttributeWriteFailure.ALREADY_EXISTS,
+                        "Tên thiết bị (device_name) không được để trống!"
+                );
+            }
 
+
+
+            if (warningMicroIP.getArea_id() == null || warningMicroIP.getArea_id().isEmpty()) {
+                throw new DistrictException(AttributeWriteFailure.ALREADY_EXISTS,
+                        "Khu vực  không được để trống!"
+                );
+            }
+
+            String sql = "SELECT COUNT(*) FROM micro_ip_device WHERE id = :id OR device_code = :device_code";
+            Query query = em.createNativeQuery(sql);
+            query.setParameter("id", warningMicroIP.getId());
+            query.setParameter("device_code", warningMicroIP.getDevice_code());
+
+
+            Number count = (Number) query.getSingleResult();
+
+            if (count.intValue() > 0) {
+                throw new DistrictException(AttributeWriteFailure.ALREADY_EXISTS,
+                        "Thiết bị với id '" + warningMicroIP.getId() + "' hoặc device_code '"
+                                + warningMicroIP.getDevice_code() + "' đã tồn tại!"
+                );
+            }
 
 
             em.createNativeQuery(
                             "INSERT INTO micro_ip_device " +
                                     "(id, device_code, device_name, is_locked, area_id, realm_name, created_by, created_at) " +
-                                    "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
+                                    "VALUES ( ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
                     )
-                    .setParameter(1, warningMicroIP.getId())
+                    .setParameter(1,warningMicroIP.getId())
                     .setParameter(2, warningMicroIP.getDevice_code())
                     .setParameter(3, warningMicroIP.getDevice_name())
                     .setParameter(4, warningMicroIP.getIs_locked())
-                    .setParameter(5, areaIdObj)
+                    .setParameter(5, warningMicroIP.getArea_id())
                     .setParameter(6, warningMicroIP.getRealm_name())
                     .setParameter(7, warningMicroIP.getCreate_by())
                     .executeUpdate();
@@ -160,20 +184,41 @@ public class WarningMicroIPService extends RouteBuilder implements ContainerServ
     public WarningMicroIP updateWarningMicroIP(WarningMicroIP warningMicroIP){
         return persistenceService.doReturningTransaction(em -> {
 
-            Query areaQuery = em.createNativeQuery("SELECT id FROM openremote.area WHERE name = :name");
-            areaQuery.setParameter("name", warningMicroIP.getArea_name());
-            Object areaIdObj = areaQuery.getSingleResult();
+            if (warningMicroIP.getDevice_name() == null || warningMicroIP.getDevice_name().isEmpty()) {
+                throw new DistrictException(AttributeWriteFailure.ALREADY_EXISTS,
+                        "Tên thiết bị không được để trống!"
+                );
+            }
+
+            if (warningMicroIP.getArea_id() == null || warningMicroIP.getArea_id().isEmpty()) {
+                throw new DistrictException(AttributeWriteFailure.ALREADY_EXISTS,
+                        "Khu vực không được để trống!"
+                );
+            }
+
+            String sql = "SELECT COUNT(*) FROM area WHERE id = :id";
+            Query query = em.createNativeQuery(sql);
+            query.setParameter("id", warningMicroIP.getArea_id());
+
+            Number count = (Number) query.getSingleResult();
+
+            if (count.intValue() == 0) {
+                throw new DistrictException(AttributeWriteFailure.ALREADY_EXISTS,
+                        "Khu vực với id '" + warningMicroIP.getArea_id() + "' không tồn tại!"
+                );
+            }
 
 
             em.createNativeQuery(
                             "UPDATE micro_ip_device " +
-                                    "SET  is_locked = ?, area_id = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP " +
+                                    "SET device_name = ? ,is_locked = ?, area_id = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP " +
                                     "WHERE id = ?"
                     )
-                    .setParameter(1, warningMicroIP.getIs_locked())
-                    .setParameter(2, areaIdObj)
-                    .setParameter(3, warningMicroIP.getUpdate_by())
-                    .setParameter(4, warningMicroIP.getId())
+                    .setParameter(1,warningMicroIP.getDevice_name())
+                    .setParameter(2, warningMicroIP.getIs_locked())
+                    .setParameter(3, warningMicroIP.getArea_id())
+                    .setParameter(4, warningMicroIP.getUpdate_by())
+                    .setParameter(5, warningMicroIP.getId())
                     .executeUpdate();
 
             return warningMicroIP;

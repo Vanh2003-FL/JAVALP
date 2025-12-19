@@ -4,11 +4,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.openremote.model.Constants;
-import org.openremote.model.Schedule.CreateScheduleRequest;
-import org.openremote.model.Schedule.ScheduleCompositeDetailDTO;
+import org.openremote.model.Schedule.*;
+import org.openremote.model.dto.ScheduleSearchDTO;
 import org.openremote.model.dto.SearchFilterDTO;
-
+import java.sql.Timestamp;
 import java.util.List;
 
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
@@ -22,8 +23,8 @@ public interface ScheduleInfoResource {
     @Path("getData")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON)
-    @RolesAllowed(Constants.READ_SCHEDULE)
-    List<ScheduleInfo> getData(SearchFilterDTO<ScheduleInfo> filterDTO);
+//    @RolesAllowed(Constants.READ_SCHEDULE)
+    List<ScheduleInfo> getData(ScheduleSearchDTO<ScheduleInfo> filterDTO);
 
     //tạo mới schedule
     @POST
@@ -68,6 +69,15 @@ public interface ScheduleInfoResource {
     @RolesAllowed(Constants.WRITE_SCHEDULE)
     ScheduleInfo updateSchedule(ScheduleInfo scheduleInfo);
 
+    @POST
+    @Path("updateStatusSchedule")
+    @Consumes(APPLICATION_JSON)
+    @Produces(APPLICATION_JSON)
+//    @RolesAllowed(Constants.WRITE_SCHEDULE)
+    List<ScheduleInfo> updateStatusSchedule(UpdateScheduleStatusRequestDTO requestDTO);
+
+
+
     //gán asset cho schedule
     @POST
     @Path("insertScheduleAsset")
@@ -87,8 +97,8 @@ public interface ScheduleInfoResource {
     @Path("countData")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON)
-    @RolesAllowed(Constants.READ_SCHEDULE)
-    Long countData(SearchFilterDTO<ScheduleInfo> filterDTO);
+//    @RolesAllowed(Constants.READ_SCHEDULE)
+    Long countData(ScheduleSearchDTO<ScheduleInfo> filterDTO);
 
     //lấy loại đèn theo asset
     @POST
@@ -121,11 +131,32 @@ public interface ScheduleInfoResource {
     @Path("/composite")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
+    //@RolesAllowed(Constants.WRITE_SCHEDULE)
     Integer createScheduleComposite(CreateScheduleRequest request);
 
     @GET
     @Path("/composite/{id}")
     @Produces(MediaType.APPLICATION_JSON)
     ScheduleCompositeDetailDTO getScheduleCompositeDetail(@PathParam("id") Integer id);
+
+    @POST
+    @Path("calendarMonthSchedules")
+    @Consumes(APPLICATION_JSON)
+    @Produces(APPLICATION_JSON)
+//    @RolesAllowed(Constants.READ_SCHEDULE)
+    List<CalendarDayDTO> getCalendarMonthSchedules(CalendarMonthSchedulesRequest request);
+
+
+    /**
+     * API Cập nhật lịch phát (Composite Update)
+     * URL: PUT /api/manager/schedule/composite (tùy config path gốc của bạn)
+     */
+    @PUT
+    @Path("/composite")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    //@RolesAllowed(Constants.WRITE_SCHEDULE)
+    Response updateScheduleComposite(UpdateScheduleRequest request);
+
 }
 

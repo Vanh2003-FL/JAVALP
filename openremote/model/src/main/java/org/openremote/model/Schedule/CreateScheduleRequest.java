@@ -19,6 +19,7 @@ public class CreateScheduleRequest {
     private String schRepeatOccu;
     private String priority;           // Mức độ ưu tiên
     private String newsCategoryId;     // Lĩnh vực (ID của category)
+    private String realm;
     private Integer bitRate;           // Tốc độ phát (64kbps, 128kbps...)
     private String description;        // Mô tả (nếu có)
     private Boolean active;            // Trạng thái kích hoạt (mặc định là true/1)
@@ -32,6 +33,24 @@ public class CreateScheduleRequest {
 
     public CreateScheduleRequest() {
     }
+
+    public CreateScheduleRequest(String scheduleName, String scheduleCode, String schType, Timestamp schFromDate, Timestamp schToDate, String schRepeatOccu, String priority, String newsCategoryId, String realm, Integer bitRate, String description, Boolean active, List<String> assetIds, List<ScheduleContentRequestDTO> contents) {
+        this.scheduleName = scheduleName;
+        this.scheduleCode = scheduleCode;
+        this.schType = schType;
+        this.schFromDate = schFromDate;
+        this.schToDate = schToDate;
+        this.schRepeatOccu = schRepeatOccu;
+        this.priority = priority;
+        this.newsCategoryId = newsCategoryId;
+        this.realm = realm;
+        this.bitRate = bitRate;
+        this.description = description;
+        this.active = active;
+        this.assetIds = assetIds;
+        this.contents = contents;
+    }
+
     public CreateScheduleRequest(String scheduleName, String scheduleCode, String schType, Timestamp schFromDate, Timestamp schToDate, String schRepeatOccu, String priority, String newsCategoryId, Integer bitRate, String description, Boolean active, List<String> assetIds, List<ScheduleContentRequestDTO> contents) {
         this.scheduleName = scheduleName;
         this.scheduleCode = scheduleCode;
@@ -151,5 +170,13 @@ public class CreateScheduleRequest {
 
     public void setContents(List<ScheduleContentRequestDTO> contents) {
         this.contents = contents;
+    }
+
+    public String getRealm() {
+        return realm;
+    }
+
+    public void setRealm_name(String realm) {
+        this.realm = realm;
     }
 }

@@ -1,0 +1,3 @@
+ALTER TABLE openremote.area
+ADD COLUMN code VARCHAR(50),
+ADD COLUMN short_name VARCHAR(50);

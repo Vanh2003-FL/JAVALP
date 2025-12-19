@@ -60,6 +60,17 @@ public class ScheduleInfo {
     @Column(length = 250)
     private String description;
 
+//    public String getApprovalStatus() {
+//        return approvalStatus;
+//    }
+//
+//    public void setApprovalStatus(String approvalStatus) {
+//        this.approvalStatus = approvalStatus;
+//    }
+
+    @Column(name = "approval_status")
+    private String approvalStatus;
+
     @CreationTimestamp
     @Column(name = "create_date", nullable = false, updatable = false)
     private Timestamp createDate;
@@ -92,8 +103,8 @@ public class ScheduleInfo {
     @Column(name = "end_time")
     private Timestamp endTime;
 
-    @Column(name = "approval_status", length = 50)
-    private String approvalStatus;
+//    @Column(name = "approval_status", length = 50)
+//    private String approvalStatus;
 
     @Column(name = "reject_reasson", length = 255)
     private String rejectReason;
@@ -112,6 +123,15 @@ public class ScheduleInfo {
 
     @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ScheduleAsset> scheduleAssets;
+
+    private String newsCategoryTitle;
+    public String getNewsCategoryTitle() {
+        return newsCategoryTitle;
+    }
+
+    public void setNewsCategoryTitle(String newsCategoryTitle) {
+        this.newsCategoryTitle = newsCategoryTitle;
+    }
 
     public ScheduleInfo() {}
 
@@ -180,6 +200,35 @@ public class ScheduleInfo {
         this.scheduleAssets = scheduleAssets;
     }
 
+    public ScheduleInfo(Integer id, String scheduleCode,
+                        String scheduleName, String realm, Integer active,
+                        String schType, Timestamp schFromDate, Timestamp schToDate,
+                        String schRepeatOccu, Boolean isSchRepeatEnd, List<SchTimePeriod> schTimePeriods,
+                        List<CustomizeLampType> customizeLampType, String approvalStatus, Integer deleted, String description,
+                        Timestamp createDate, String createBy, Timestamp updateDate, String updateBy,
+                        List<TimeConfiguration> timeConfigurations, List<ScheduleAsset> scheduleAssets) {
+        this.id = id;
+        this.scheduleCode = scheduleCode;
+        this.scheduleName = scheduleName;
+        this.realm = realm;
+        this.active = active;
+        this.schType = schType;
+        this.schFromDate = schFromDate;
+        this.schToDate = schToDate;
+        this.schRepeatOccu = schRepeatOccu;
+        this.isSchRepeatEnd = isSchRepeatEnd;
+        this.schTimePeriods = schTimePeriods;
+        this.customizeLampType = customizeLampType;
+        this.approvalStatus = approvalStatus;
+        this.deleted = deleted;
+        this.description = description;
+        this.createDate = createDate;
+        this.createBy = createBy;
+        this.updateDate = updateDate;
+        this.updateBy = updateBy;
+        this.timeConfigurations = timeConfigurations;
+        this.scheduleAssets = scheduleAssets;
+    }
 
 
     public Integer getId() {

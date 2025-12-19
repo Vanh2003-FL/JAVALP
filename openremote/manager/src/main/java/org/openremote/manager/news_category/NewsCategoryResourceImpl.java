@@ -1,18 +1,17 @@
 package org.openremote.manager.news_category;
 
-import jakarta.ws.rs.ForbiddenException;
 import org.openremote.container.persistence.PersistenceService;
 import org.openremote.container.timer.TimerService;
 import org.openremote.manager.security.ManagerIdentityService;
 import org.openremote.manager.web.ManagerWebResource;
 import org.openremote.model.dto.SearchFilterDTO;
-import org.openremote.model.news_category.NewsCategory;
-import org.openremote.model.news_category.NewsCategoryResources;
+import org.openremote.model.NewsCategory.NewsCategory;
+import org.openremote.model.NewsCategory.NewsCategoryResource;
 import org.openremote.model.security.User;
 
 import java.util.List;
 
-public class NewsCategoryResourceImpl extends ManagerWebResource implements NewsCategoryResources {
+public class NewsCategoryResourceImpl extends ManagerWebResource implements NewsCategoryResource {
 
     protected final PersistenceService persistenceService;
     protected final NewsCategoryPersistenceService newsCategoryPersistenceService;

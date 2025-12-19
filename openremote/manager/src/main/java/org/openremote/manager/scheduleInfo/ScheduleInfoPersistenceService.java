@@ -2,12 +2,14 @@ package org.openremote.manager.scheduleInfo;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
+import jakarta.persistence.TemporalType;
 import org.apache.camel.builder.RouteBuilder;
 import org.openremote.container.persistence.PersistenceService;
 import org.openremote.container.timer.TimerService;
@@ -21,15 +23,23 @@ import org.openremote.model.Container;
 import org.openremote.model.ContainerService;
 import org.openremote.model.PersistenceEvent;
 import org.openremote.model.Schedule.*;
+import org.openremote.model.attribute.AttributeWriteFailure;
+import org.openremote.model.district.DistrictException;
+import org.openremote.model.dto.ScheduleSearchDTO;
 import org.openremote.model.dto.SearchFilterDTO;
+import org.openremote.model.exception.ExceptionCommon;
 import org.openremote.model.exception.ExceptionMapperCommon;
 import org.openremote.model.hdi.hdiDTO.Hdi3SceneClear;
 import org.openremote.model.hdi.hdiDTO.commandDTO.LightCommand3Control2;
 import org.openremote.model.hdi.hdiEven.HdiEven;
 import org.openremote.model.scheduleinfo.*;
+import org.openremote.model.security.User;
 import org.openremote.model.supplier.SupplierExceptionMapper;
+import org.postgresql.util.PGobject;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -88,6 +98,53 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
         });
     }
 
+    public void updateStatusBySchedule(Integer scheduleInfoId, int value) {
+        // Sử dụng doInTransaction vì đây là một thao tác cập nhật (không trả về dữ liệu)
+        persistenceService.doReturningTransaction(em -> {
+            // Câu lệnh SQL UPDATE để thay đổi cột 'status'
+            String sql = new StringBuilder()
+                    .append("UPDATE schedule_asset ")
+                    .append("SET status = :value ")
+                    .append("WHERE schedule_id = :scheduleInfoId").toString();
+
+            // Tạo truy vấn, gán tham số và thực thi
+            return em.createNativeQuery(sql)
+                    .setParameter("scheduleInfoId", scheduleInfoId)
+                    .setParameter("value", value)
+                    .executeUpdate();
+        });
+    }
+
+    public List<ScheduleInfo> updateStatusBySchedule(List<ScheduleInfo> scheduleInfoId, String value) {
+
+        if (scheduleInfoId == null || scheduleInfoId.isEmpty()) {
+            throw new  DistrictException(AttributeWriteFailure.ALREADY_EXISTS, "ASSET_ERROR" + " scheduleIds cannot be null or empty");
+        }
+        if (value == null) {
+            throw new  DistrictException(AttributeWriteFailure.ALREADY_EXISTS, "ASSET_ERROR" + " Invalid status: " + value);
+        }
+
+        List<Integer> ids = scheduleInfoId.stream()
+                .map(ScheduleInfo::getId)
+                .toList();
+
+        persistenceService.doReturningTransaction(em -> {
+            if (ids.isEmpty()) return null;
+            String inClause = ids.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+
+            String sql = "UPDATE schedule_info SET approval_status = :status WHERE id IN (" + inClause + ")";
+
+            em.createNativeQuery(sql)
+                    .setParameter("status", value)
+                    .executeUpdate();
+
+            return null;
+        });
+        return scheduleInfoId;
+    }
+
     public void updateAssetStatusByScheduleAndAssetId(Integer scheduleInfoId, int value, List<String> ids) {
         if (ids == null || ids.isEmpty()) {
             return;
@@ -143,37 +200,76 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
         );
     }
 
-    public List<ScheduleInfo> getAll(SearchFilterDTO<ScheduleInfo> searchFilterDTO) {
+    public List<ScheduleInfo> getAll(ScheduleSearchDTO<ScheduleInfo> scheduleSearchDTO) {
         // Nếu null, trả danh sách rỗng hoặc xử lý phù hợp
-        if (searchFilterDTO == null) {
+        if (scheduleSearchDTO == null) {
             System.out.println("⚠️ searchFilterDTO is null");
             return Collections.emptyList();
         }
 
-        ScheduleInfo filterData = searchFilterDTO.getData();
+        ScheduleInfo filterData = scheduleSearchDTO.getData();
         String scheduleName = null;
         String realm = null;
+        String scheduleType = null;
+        String approvalStatus = null;
+        Long fromDate = null;
+        Long toDate = null;
+        String refType = null; // "area" or "asset"
+        String refId   = null;   // uuid string
 
         if (filterData != null) {
             scheduleName = filterData.getScheduleName();
             realm = filterData.getRealm();
-
-            System.out.println("🔍 Realm: " + realm);
-            System.out.println("✅ Valid realm: " + validationUtils.isValid(realm));
+            scheduleType = filterData.getSchType();
+            approvalStatus = filterData.getApprovalStatus();
+            fromDate = scheduleSearchDTO.getFromDate();
+            toDate = scheduleSearchDTO.getToDate();
+            refType = scheduleSearchDTO.getType(); // "area" or "asset"
+            refId   = scheduleSearchDTO.getId();   // uuid string
+            System.out.println("Realm: " + realm);
+            System.out.println("Valid realm: " + validationUtils.isValid(realm));
+            System.out.println("approvalStatus: " + approvalStatus);
+            System.out.println("refType: " + refType);
+            System.out.println("refId: " + refId);
         } else {
-            System.out.println("⚠️ searchFilterDTO.getData() is null");
+            System.out.println("⚠️ scheduleSearchDTO.getData() is null");
         }
 
         final String finalScheduleName = scheduleName;
         final String finalRealm = realm;
+        final String finalScheduleType = scheduleType;
+        final String finalApprovalStatus = approvalStatus;
+        final Long finalFromDate = fromDate;
+        final Long finalToDate = toDate;
+        final String finalRefType = refType;
+        final String finalRefId   = refId;
 
         return persistenceService.doReturningTransaction(em -> {
             StringBuilder baseQuery = new StringBuilder(
-                    "SELECT id, schedule_code, schedule_name, realm, active, sch_type, " +
-                            "sch_from_date, sch_to_date, sch_repeat_occu, is_sch_repeat_end, " +
-                            "sch_time_period, customize_lamp_type, deleted, description, " +
-                            "create_date, create_by, update_date, update_by " +
-                            "FROM schedule_info WHERE deleted = 0"
+                    "SELECT " +
+                            "si.id, " +                           // 0
+                            "si.schedule_code, " +                // 1
+                            "si.schedule_name, " +                // 2
+                            "nc.title, " +                        // 3
+                            "si.realm, " +                        // 4
+                            "si.active, " +                       // 5
+                            "si.sch_type, " +                     // 6
+                            "si.sch_from_date, " +                // 7
+                            "si.sch_to_date, " +                  // 8
+                            "si.sch_repeat_occu, " +              // 9
+                            "si.is_sch_repeat_end, " +            // 10
+                            "si.sch_time_period, " +              // 11
+                            "si.approval_status, " +              // 12
+                            "si.deleted, " +                      // 13
+                            "si.description, " +                  // 14
+                            "si.create_date, " +                  // 15
+                            "si.create_by, " +                    // 16
+                            "si.update_date, " +                  // 17
+                            "si.update_by " +                     // 18
+                            "FROM openremote.schedule_info si " +
+                            "JOIN openremote.news_category nc " +
+                            "  ON si.news_category_id = nc.id AND nc.is_deleted = false " +
+                            "WHERE si.deleted = 0"
             );
 
             if (validationUtils.isValid(finalScheduleName)) {
@@ -181,6 +277,43 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
             }
             if (validationUtils.isValid(finalRealm)) {
                 baseQuery.append(" AND realm = :realm");
+            }
+            if (validationUtils.isValid(finalScheduleType)) {
+                baseQuery.append(" AND sch_type = :scheduleType");
+            }
+            if (validationUtils.isValid(finalApprovalStatus)) {
+                baseQuery.append(" AND approval_status = :approvalStatus");
+            }
+            if (finalFromDate != null && finalToDate != null) {
+                baseQuery.append(" AND sch_from_date <= :toDate AND sch_to_date >= :fromDate");
+            } else if (finalFromDate != null) {
+                // chỉ có fromDate: lấy các schedule kết thúc sau fromDate
+                baseQuery.append(" AND sch_to_date >= :fromDate");
+            } else if (finalToDate != null) {
+                // chỉ có toDate: lấy các schedule bắt đầu trước toDate
+                baseQuery.append(" AND sch_from_date <= :toDate");
+            }
+            if (validationUtils.isValid(finalRefType) && validationUtils.isValid(finalRefId)) {
+                if ("asset".equalsIgnoreCase(finalRefType)) {
+                    baseQuery.append(
+                            " AND EXISTS ( " +
+                                    "   SELECT 1 FROM openremote.schedule_asset sa " +
+                                    "   WHERE sa.is_deleted = false " +
+                                    "     AND CAST(sa.schedule_id AS int) = si.id " +
+                                    "     AND sa.asset_id = :refId " +
+                                    " )"
+                    );
+                } else if ("area".equalsIgnoreCase(finalRefType)) {
+                    baseQuery.append(
+                            " AND EXISTS ( " +
+                                    "   SELECT 1 FROM openremote.schedule_asset sa " +
+                                    "   JOIN openremote.asset_info ai ON ai.id = sa.asset_id AND ai.deleted = false " +
+                                    "   WHERE sa.is_deleted = false " +
+                                    "     AND CAST(sa.schedule_id AS int) = si.id " +
+                                    "     AND ai.area_id = :refId " +
+                                    " )"
+                    );
+                }
             }
 
             baseQuery.append(" ORDER BY create_date DESC");
@@ -193,9 +326,26 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
             if (validationUtils.isValid(finalRealm)) {
                 query.setParameter("realm", finalRealm.trim());
             }
+            if (validationUtils.isValid(finalScheduleType)) {
+                query.setParameter("scheduleType", finalScheduleType.trim());
+            }
+            if (validationUtils.isValid(finalApprovalStatus)) {
+                query.setParameter("approvalStatus", finalApprovalStatus.trim());
+            }
+            if (validationUtils.isValid(finalRefType) && validationUtils.isValid(finalRefId)) {
+                if ("asset".equalsIgnoreCase(finalRefType) || "area".equalsIgnoreCase(finalRefType)) {
+                    query.setParameter("refId", finalRefId.trim());
+                }
+            }
+            if (finalFromDate != null) {
+                query.setParameter("fromDate", new java.sql.Timestamp(finalFromDate));
+            }
+            if (finalToDate != null) {
+                query.setParameter("toDate", new java.sql.Timestamp(finalToDate));
+            }
 
-            Integer page = searchFilterDTO.getPage();
-            Integer size = searchFilterDTO.getSize();
+            Integer page = scheduleSearchDTO.getPage();
+            Integer size = scheduleSearchDTO.getSize();
             if (validationUtils.isValid(size) && validationUtils.isValid(page)) {
                 query.setMaxResults(size);
                 query.setFirstResult((page - 1) * size);
@@ -212,26 +362,30 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
 
 
     private ScheduleInfo mapToScheduleInfo(Object[] result) {
-        return new ScheduleInfo(
+        String newsTitle = (String) result[3];
+        ScheduleInfo si = new ScheduleInfo(
                 ((Number) result[0]).intValue(),              // id
                 (String) result[1],                            // scheduleCode
                 (String) result[2],                            // scheduleName
-                (String) result[3],                            // realm
-                ((Number) result[4]).intValue(),              // active
-                (String) result[5],                            // schType
-                (Timestamp) result[6],                                               // schFromDate
-                (Timestamp) result[7],                                          // schToDate
+                (String) result[4],                            // realm
+                ((Number) result[5]).intValue(),              // active
+                (String) result[6],                            // schType
+                (Timestamp) result[7],                                               // schFromDate
+                (Timestamp) result[8],                                          // schToDate
                 null,                                          // schRepeatOccu
                 false,                                         // schRepeatEnd
                 null, null,                                    // schTimePeriods, customizeLampType
-                ((Number) result[12]).intValue(),              // deleted
-                (String) result[13],                           // description
-                (Timestamp) result[14],                        // createDate ✅
-                (String) result[15],                           // createBy ✅
-                (Timestamp) result[16],                        // updateDate ✅
-                (String) result[17],                           // updateBy ✅
+                (String) result[12],                           //approvalStatus
+                ((Number) result[13]).intValue(),              // deleted
+                (String) result[14],                           // description
+                (Timestamp) result[15],                        // createDate ✅
+                (String) result[16],                           // createBy ✅
+                (Timestamp) result[17],                        // updateDate ✅
+                (String) result[18],                           // updateBy ✅
                 null, null                                     // timeConfigurations, scheduleAssets
         );
+        si.setNewsCategoryTitle(newsTitle);
+        return si;
     }
 
 
@@ -1357,29 +1511,122 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
         });
     }
 
-    public Long countData(SearchFilterDTO<ScheduleInfo> filterDTO) {
-        return persistenceService.doReturningTransaction(em -> {
-            StringBuilder baseQuery = new StringBuilder("SELECT COUNT(*) FROM schedule_info WHERE deleted = 0");
+    public Long countData(ScheduleSearchDTO<ScheduleInfo> scheduleSearchDTO) {
+        // Nếu null, trả về 0
+        if (scheduleSearchDTO == null) {
+            System.out.println("scheduleSearchDTO is null");
+            return 0L;
+        }
 
-            ScheduleInfo data = filterDTO.getData();
-            if (validationUtils.isValid(data)) {
-                if (validationUtils.isValid(data.getScheduleName())) {
-                    baseQuery.append(" AND LOWER(schedule_name) LIKE LOWER(:scheduleName)");
-                }
-                if (validationUtils.isValid(data.getRealm())) {
-                    baseQuery.append(" AND realm = :realm");
+        ScheduleInfo filterData = scheduleSearchDTO.getData();
+        String scheduleName = null;
+        String realm = null;
+        String scheduleType = null;
+        String approvalStatus = null;
+        Long fromDate = null;
+        Long toDate = null;
+        String refType = null; // "area" or "asset"
+        String refId = null;   // uuid string
+
+        if (filterData != null) {
+            scheduleName = filterData.getScheduleName();
+            realm = filterData.getRealm();
+            scheduleType = filterData.getSchType();
+            approvalStatus = filterData.getApprovalStatus();
+            fromDate = scheduleSearchDTO.getFromDate();
+            toDate = scheduleSearchDTO.getToDate();
+            refType = scheduleSearchDTO.getType(); // "area" or "asset"
+            refId = scheduleSearchDTO.getId();     // uuid string
+        } else {
+            System.out.println("scheduleSearchDTO.getData() is null");
+        }
+
+        final String finalScheduleName = scheduleName;
+        final String finalRealm = realm;
+        final String finalScheduleType = scheduleType;
+        final String finalApprovalStatus = approvalStatus;
+        final Long finalFromDate = fromDate;
+        final Long finalToDate = toDate;
+        final String finalRefType = refType;
+        final String finalRefId = refId;
+
+        return persistenceService.doReturningTransaction(em -> {
+            StringBuilder baseQuery = new StringBuilder(
+                    "SELECT COUNT(DISTINCT si.id) " +
+                            "FROM openremote.schedule_info si " +
+                            "JOIN openremote.news_category nc " +
+                            "  ON si.news_category_id = nc.id AND nc.is_deleted = false " +
+                            "WHERE si.deleted = 0"
+            );
+
+            // Áp dụng các điều kiện filter giống hàm getAll
+            if (validationUtils.isValid(finalScheduleName)) {
+                baseQuery.append(" AND LOWER(si.schedule_name) LIKE LOWER(:scheduleName)");
+            }
+            if (validationUtils.isValid(finalRealm)) {
+                baseQuery.append(" AND si.realm = :realm");
+            }
+            if (validationUtils.isValid(finalScheduleType)) {
+                baseQuery.append(" AND si.sch_type = :scheduleType");
+            }
+            if (validationUtils.isValid(finalApprovalStatus)) {
+                baseQuery.append(" AND si.approval_status = :approvalStatus");
+            }
+            if (finalFromDate != null && finalToDate != null) {
+                baseQuery.append(" AND si.sch_from_date <= :toDate AND si.sch_to_date >= :fromDate");
+            } else if (finalFromDate != null) {
+                baseQuery.append(" AND si.sch_to_date >= :fromDate");
+            } else if (finalToDate != null) {
+                baseQuery.append(" AND si.sch_from_date <= :toDate");
+            }
+            if (validationUtils.isValid(finalRefType) && validationUtils.isValid(finalRefId)) {
+                if ("asset".equalsIgnoreCase(finalRefType)) {
+                    baseQuery.append(
+                            " AND EXISTS ( " +
+                                    "   SELECT 1 FROM openremote.schedule_asset sa " +
+                                    "   WHERE sa.is_deleted = false " +
+                                    "     AND CAST(sa.schedule_id AS int) = si.id " +
+                                    "     AND sa.asset_id = :refId " +
+                                    " )"
+                    );
+                } else if ("area".equalsIgnoreCase(finalRefType)) {
+                    baseQuery.append(
+                            " AND EXISTS ( " +
+                                    "   SELECT 1 FROM openremote.schedule_asset sa " +
+                                    "   JOIN openremote.asset_info ai ON ai.id = sa.asset_id AND ai.deleted = false " +
+                                    "   WHERE sa.is_deleted = false " +
+                                    "     AND CAST(sa.schedule_id AS int) = si.id " +
+                                    "     AND ai.area_id = :refId " +
+                                    " )"
+                    );
                 }
             }
 
-            var query = em.createNativeQuery(baseQuery.toString());
+            Query query = em.createNativeQuery(baseQuery.toString());
 
-            if (validationUtils.isValid(data)) {
-                if (validationUtils.isValid(data.getScheduleName())) {
-                    query.setParameter("scheduleName", "%" + data.getScheduleName().trim() + "%");
+            // Set parameters giống hàm getAll
+            if (validationUtils.isValid(finalScheduleName)) {
+                query.setParameter("scheduleName", "%" + finalScheduleName.trim() + "%");
+            }
+            if (validationUtils.isValid(finalRealm)) {
+                query.setParameter("realm", finalRealm.trim());
+            }
+            if (validationUtils.isValid(finalScheduleType)) {
+                query.setParameter("scheduleType", finalScheduleType.trim());
+            }
+            if (validationUtils.isValid(finalApprovalStatus)) {
+                query.setParameter("approvalStatus", finalApprovalStatus.trim());
+            }
+            if (validationUtils.isValid(finalRefType) && validationUtils.isValid(finalRefId)) {
+                if ("asset".equalsIgnoreCase(finalRefType) || "area".equalsIgnoreCase(finalRefType)) {
+                    query.setParameter("refId", finalRefId.trim());
                 }
-                if (validationUtils.isValid(data.getRealm())) {
-                    query.setParameter("realm", data.getRealm().trim());
-                }
+            }
+            if (finalFromDate != null) {
+                query.setParameter("fromDate", new java.sql.Timestamp(finalFromDate));
+            }
+            if (finalToDate != null) {
+                query.setParameter("toDate", new java.sql.Timestamp(finalToDate));
             }
 
             return ((Number) query.getSingleResult()).longValue();
@@ -1470,18 +1717,60 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
         });
     }
 
-    public Integer createScheduleComposite(CreateScheduleRequest request) {
+    public Integer createScheduleComposite(CreateScheduleRequest request, User user) {
         return persistenceService.doReturningTransaction(em -> {
             try {
-                Timestamp now = new Timestamp(System.currentTimeMillis());
-                String createdBy = "system";
-                String realm = "master";
-
-                // Xử lý active
-                int activeVal = (request.getActive() != null && request.getActive()) ? 1 : 0;
 
                 // ------------------------------------------------------------------
-                // BƯỚC 1: INSERT SCHEDULE_INFO
+                // 1. VALIDATE CƠ BẢN (NULL/EMPTY)
+                // ------------------------------------------------------------------
+                if (request.getScheduleCode() == null || request.getScheduleCode().trim().isEmpty()) {
+                    throw new RuntimeException("Mã lịch phát (Code) không được để trống!");
+                }
+                if (request.getScheduleName() == null || request.getScheduleName().trim().isEmpty()) {
+                    throw new RuntimeException("Tên lịch phát (Name) không được để trống!");
+                }
+
+                String codeToCheck = request.getScheduleCode().trim();
+                //String realm = "master"; // Realm cố định hoặc lấy từ request nếu có
+                String realm = request.getRealm();
+                // ------------------------------------------------------------------
+                // 2. CHECK TRÙNG MÃ (DUPLICATE CODE)
+                // ------------------------------------------------------------------
+                // Kiểm tra xem mã đã tồn tại trong hệ thống chưa (chỉ tính các bản ghi chưa bị xóa)
+                String sqlCheckDuplicate = "SELECT COUNT(1) FROM openremote.schedule_info " +
+                        "WHERE schedule_code = :code " +
+                        "AND realm = :realm " +
+                        "AND deleted = 0"; // Giả sử deleted = 0 là chưa xóa
+
+                Query queryCheck = em.createNativeQuery(sqlCheckDuplicate);
+                queryCheck.setParameter("code", codeToCheck);
+                queryCheck.setParameter("realm", realm);
+
+                Number count = (Number) queryCheck.getSingleResult();
+                if (count.intValue() > 0) {
+                    throw new RuntimeException("Mã lịch phát '" + codeToCheck + "' đã tồn tại! Vui lòng chọn mã khác.");
+                }
+
+                // ------------------------------------------------------------------
+                // 3. CHUẨN BỊ DỮ LIỆU & LOGIC NGÀY THÁNG
+                // ------------------------------------------------------------------
+                Timestamp now = new Timestamp(System.currentTimeMillis());
+                String createdBy = "system";
+
+                int activeVal = (request.getActive() != null && request.getActive()) ? 1 : 0;
+
+                ScheduleInfo infoParams = new ScheduleInfo();
+                infoParams.setSchType(request.getSchType());
+                infoParams.setSchFromDate(request.getSchFromDate());
+                infoParams.setSchToDate(request.getSchToDate());
+                infoParams.setSchRepeatOccu(request.getSchRepeatOccu());
+
+                // Validate logic ngày tháng/loại lịch
+                validateScheduleType(infoParams);
+
+                // ------------------------------------------------------------------
+                // 4. INSERT SCHEDULE_INFO
                 // ------------------------------------------------------------------
                 StringBuilder sqlInfo = new StringBuilder();
                 sqlInfo.append("INSERT INTO openremote.schedule_info (")
@@ -1500,15 +1789,15 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
 
                 Query queryInfo = em.createNativeQuery(sqlInfo.toString());
 
-                queryInfo.setParameter("code", request.getScheduleCode());
-                queryInfo.setParameter("name", request.getScheduleName());
+                queryInfo.setParameter("code", codeToCheck); // Dùng biến đã trim()
+                queryInfo.setParameter("name", request.getScheduleName().trim());
                 queryInfo.setParameter("realm", realm);
                 queryInfo.setParameter("active", activeVal);
 
-                queryInfo.setParameter("type", request.getSchType());
-                queryInfo.setParameter("fromDate", request.getSchFromDate());
-                queryInfo.setParameter("toDate", request.getSchToDate());
-                queryInfo.setParameter("repeat", request.getSchRepeatOccu());
+                queryInfo.setParameter("type", infoParams.getSchType());
+                queryInfo.setParameter("fromDate", infoParams.getSchFromDate());
+                queryInfo.setParameter("toDate", infoParams.getSchToDate());
+                queryInfo.setParameter("repeat", infoParams.getSchRepeatOccu());
 
                 queryInfo.setParameter("priority", request.getPriority());
                 queryInfo.setParameter("desc", request.getDescription());
@@ -1516,15 +1805,15 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
                 queryInfo.setParameter("bitRate", request.getBitRate());
 
                 queryInfo.setParameter("createDate", now);
-                queryInfo.setParameter("createBy", createdBy);
+                queryInfo.setParameter("createBy", user.getUsername());
                 queryInfo.setParameter("updateDate", now);
-                queryInfo.setParameter("updateBy", createdBy);
+                queryInfo.setParameter("updateBy", user.getUsername());
 
                 Integer scheduleIdInt = (Integer) queryInfo.getSingleResult();
                 String scheduleIdStr = String.valueOf(scheduleIdInt);
 
                 // ------------------------------------------------------------------
-                // BƯỚC 2: INSERT SCHEDULE_ASSET
+                // 5. INSERT SCHEDULE_ASSET (Logic cũ - Giữ nguyên)
                 // ------------------------------------------------------------------
                 if (request.getAssetIds() != null && !request.getAssetIds().isEmpty()) {
                     String sqlAsset = "INSERT INTO openremote.schedule_asset " +
@@ -1540,18 +1829,17 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
                                 .setParameter("assetId", assetId)
                                 .setParameter("realm", realm)
                                 .setParameter("createdAt", now)
-                                .setParameter("createdBy", createdBy)
+                                .setParameter("createdBy", user.getUsername())
                                 .executeUpdate();
                     }
                 }
 
                 // ------------------------------------------------------------------
-                // BƯỚC 3: INSERT CONTENT & CONTENT_TYPE (Đã sửa logic TimeFrame)
+                // 6. INSERT CONTENT (Logic cũ - Giữ nguyên)
                 // ------------------------------------------------------------------
                 if (request.getContents() != null && !request.getContents().isEmpty()) {
                     ObjectMapper mapper = new ObjectMapper();
 
-                    // SQL insert bảng schedule_content
                     String sqlContent = "INSERT INTO openremote.schedule_content (" +
                             "  id, schedule_id, \"number\", duration, order_by, time_period, " +
                             "  created_at, created_by, is_deleted " +
@@ -1560,7 +1848,6 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
                             "  :createdAt, :createdBy, false " +
                             ")";
 
-                    // SQL insert bảng schedule_content_type
                     String sqlContentType = "INSERT INTO openremote.schedule_content_type (" +
                             "  id, \"type\", schedule_content_id, entity_id, entity_name, " +
                             "  realm_name, created_at, created_by, is_deleted " +
@@ -1570,29 +1857,24 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
                             ")";
 
                     for (ScheduleContentRequestDTO contentDto : request.getContents()) {
-
-                        // --- SỬA Ở ĐÂY: Xử lý timeFrames riêng cho từng Content ---
                         String contentTimePeriodJson = null;
                         if (contentDto.getTime_period() != null && !contentDto.getTime_period().isEmpty()) {
                             contentTimePeriodJson = mapper.writeValueAsString(contentDto.getTime_period());
                         }
-                        // ----------------------------------------------------------
 
                         String contentId = UUID.randomUUID().toString();
 
-                        // 3.1 Insert Content
                         em.createNativeQuery(sqlContent)
                                 .setParameter("id", contentId)
                                 .setParameter("schId", scheduleIdStr)
                                 .setParameter("number", contentDto.getNumber())
                                 .setParameter("duration", "00:00:00")
                                 .setParameter("orderBy", contentDto.getOrderBy())
-                                .setParameter("timePeriod", contentTimePeriodJson) // Set JSON riêng của content này
+                                .setParameter("timePeriod", contentTimePeriodJson)
                                 .setParameter("createdAt", now)
-                                .setParameter("createdBy", createdBy)
+                                .setParameter("createdBy", user.getUsername())
                                 .executeUpdate();
 
-                        // 3.2 Insert Content Type
                         em.createNativeQuery(sqlContentType)
                                 .setParameter("id", UUID.randomUUID().toString())
                                 .setParameter("type", contentDto.getContentType())
@@ -1601,7 +1883,7 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
                                 .setParameter("entityName", contentDto.getEntityName())
                                 .setParameter("realm", realm)
                                 .setParameter("createdAt", now)
-                                .setParameter("createdBy", createdBy)
+                                .setParameter("createdBy", user.getUsername())
                                 .executeUpdate();
                     }
                 }
@@ -1610,7 +1892,8 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
 
             } catch (Exception e) {
                 e.printStackTrace();
-                throw new RuntimeException("Lỗi khi tạo lịch phát: " + e.getMessage(), e);
+                // Ném lỗi RuntimeException để transaction rollback và FE nhận được message
+                throw new RuntimeException(e.getMessage());
             }
         });
     }
@@ -1748,6 +2031,474 @@ public class ScheduleInfoPersistenceService extends RouteBuilder implements Cont
                 throw new RuntimeException("Lỗi khi lấy chi tiết lịch phát: " + e.getMessage());
             }
         });
+    }
+
+    public List<CalendarDayDTO> getCalendarMonthSchedules(CalendarMonthSchedulesRequest request) {
+
+        Timestamp viewStart = parseTimestamp(request != null ? request.getViewStart() : null);
+        Timestamp viewEnd   = parseTimestamp(request != null ? request.getViewEnd() : null);
+        String approvalStatus = trimToNull(request != null ? request.getApprovalStatus() : null);
+
+        // Optional filters
+        String priority = trimToNull(request != null ? request.getPriority() : null);
+        String entityName = trimToNull(request != null ? request.getEntityName() : null);
+
+        // Dùng empty-string sentinel để tránh setParameter(null) gây lỗi type inference ở một số JPA provider
+        String priorityParam = (priority == null) ? "" : priority;
+        String entityNameParam = (entityName == null) ? "" : entityName;
+
+        String playlistName = trimToNull(request != null ? request.getPlaylistName() : null);
+        String liveChannelTitle = trimToNull(request != null ? request.getLiveChannelTitle() : null);
+
+        String playlistNameParam = (playlistName == null) ? "" : playlistName;
+        String liveChannelTitleParam = (liveChannelTitle == null) ? "" : liveChannelTitle;
+
+        String contentType = trimToNull(request != null ? request.getContentType() : null);
+        String contentTypeParam = (contentType == null) ? "" : contentType;
+
+        if (viewStart == null || viewEnd == null || approvalStatus == null) {
+            return Collections.emptyList();
+        }
+
+        return persistenceService.doReturningTransaction(em -> {
+
+            StringBuilder sql = new StringBuilder();
+            sql.append("WITH days AS ( \n")
+                    .append("  SELECT CAST(gs AS date) AS day \n")
+                    .append("  FROM generate_series( \n")
+                    .append("    CAST(:viewStart AS date), \n")
+                    .append("    CAST(:viewEnd   AS date) - 1, \n")
+                    .append("    interval '1 day' \n")
+                    .append("  ) AS gs \n")
+                    .append("), \n")
+
+                    // base_raw: giữ nguyên logic join, thêm filter priority
+                    .append("base_raw AS ( \n")
+                    .append("  SELECT \n")
+                    .append("    d.day, \n")
+                    .append("    s.id             AS schedule_id, \n")
+                    .append("    s.schedule_code  AS schedule_code, \n")
+                    .append("    s.schedule_name  AS schedule_name, \n")
+                    .append("    s.priority       AS schedule_priority, \n")
+                    .append("    s.sch_from_date  AS sch_from_date, \n")
+                    .append("    s.sch_to_date    AS sch_to_date, \n")
+                    .append("    sc.id            AS schedule_content_id, \n")
+                    .append("    sc.order_by      AS content_order_by, \n")
+                    .append("    sc.number        AS content_number, \n")
+                    .append("    sc.duration      AS content_duration, \n")
+                    .append("    sc.time_period   AS content_time_period, \n")
+                    .append("    upper(regexp_replace(coalesce(sct.type, ''), '[^A-Za-z0-9]', '', 'g')) AS norm_type, \n")
+                    .append("    sct.entity_id    AS entity_id, \n")
+                    .append("    sct.entity_name  AS entity_name_raw, \n")
+                    .append("    p2.name          AS playlist_name, \n")
+                    .append("    lsc.title        AS live_channel_title, \n")
+                    .append("    lsc.url          AS live_channel_url \n")
+                    .append("  FROM days d \n")
+                    .append("  JOIN schedule_info s \n")
+                    .append("    ON s.approval_status = :approvalStatus \n")
+                    .append("   AND coalesce(s.deleted, 0) = 0 \n")
+                    .append("   AND coalesce(s.active, 1) = 1 \n")
+                    .append("   AND CAST(s.sch_from_date AS date) <= d.day \n")
+                    .append("   AND CAST(s.sch_to_date   AS date) >= d.day \n")
+                    .append("   AND (:priority = '' OR s.priority = :priority) \n")
+                    .append("  LEFT JOIN schedule_content sc \n")
+                    .append("    ON CAST(sc.schedule_id AS text) = CAST(s.id AS text) \n")
+                    .append("  LEFT JOIN schedule_content_type sct \n")
+                    .append("    ON CAST(sct.schedule_content_id AS text) = CAST(sc.id AS text) \n")
+                    .append("  LEFT JOIN playlist p2 \n")
+                    .append("    ON p2.is_deleted = false \n")
+                    .append("   AND upper(regexp_replace(coalesce(sct.type, ''), '[^A-Za-z0-9]', '', 'g')) = 'PLAYLIST' \n")
+                    .append("   AND CAST(p2.id AS text) = CAST(sct.entity_id AS text) \n")
+                    .append("  LEFT JOIN live_stream_channel lsc \n")
+                    .append("    ON lsc.is_deleted = false \n")
+                    .append("   AND upper(regexp_replace(coalesce(sct.type, ''), '[^A-Za-z0-9]', '', 'g')) \n")
+                    .append("       IN ('LIVESTREAMCHANNEL','LIVESTREAM','LIVESTREAMCH') \n")
+                    .append("   AND CAST(lsc.id AS text) = CAST(sct.entity_id AS text) \n")
+                    .append("), \n")
+
+                    // base: tính entity_name_effective để vừa build JSON vừa filter entityName
+                    .append("base AS ( \n")
+                    .append("  SELECT \n")
+                    .append("    br.*, \n")
+                    .append("    CASE \n")
+                    .append("      WHEN br.norm_type = 'PLAYLIST' THEN br.playlist_name \n")
+                    .append("      WHEN br.norm_type IN ('LIVESTREAMCHANNEL','LIVESTREAM','LIVESTREAMCH') THEN br.live_channel_title \n")
+                    .append("      ELSE br.entity_name_raw \n")
+                    .append("    END AS entity_name_effective \n")
+                    .append("  FROM base_raw br \n")
+                    .append("), \n")
+
+                    .append("base_f AS ( \n")
+                    .append("  SELECT \n")
+                    .append("    b.*, \n")
+                    .append("    ( \n")
+                    .append("      (:entityName = '' OR COALESCE(b.entity_name_effective, '') ILIKE ('%' || :entityName || '%')) \n")
+                    .append("      AND ( \n")
+                    .append("        :contentType = '' \n")
+                    .append("        OR ( \n")
+                    .append("          :contentType = 'LIVESTREAMCHANNEL' \n")
+                    .append("          AND b.norm_type IN ('LIVESTREAMCHANNEL','LIVESTREAM','LIVESTREAMCH') \n")
+                    .append("        ) \n")
+                    .append("        OR b.norm_type = :contentType \n")
+                    .append("      ) \n")
+                    .append("      AND ( \n")
+                    .append("        :playlistName = '' \n")
+                    .append("        OR (b.norm_type = 'PLAYLIST' AND COALESCE(b.playlist_name, '') ILIKE ('%' || :playlistName || '%')) \n")
+                    .append("      ) \n")
+                    .append("      AND ( \n")
+                    .append("        :liveChannelTitle = '' \n")
+                    .append("        OR ( \n")
+                    .append("          b.norm_type IN ('LIVESTREAMCHANNEL','LIVESTREAM','LIVESTREAMCH') \n")
+                    .append("          AND COALESCE(b.live_channel_title, '') ILIKE ('%' || :liveChannelTitle || '%') \n")
+                    .append("        ) \n")
+                    .append("      ) \n")
+                    .append("    ) AS matches_filter \n")
+                    .append("  FROM base b \n")
+                    .append("), \n")
+
+                    // schedule_meta: thêm has_match để lọc schedule theo entityName
+                    .append("schedule_meta AS ( \n")
+                    .append("  SELECT \n")
+                    .append("    day, schedule_id, \n")
+                    .append("    max(schedule_code)     AS schedule_code, \n")
+                    .append("    max(schedule_name)     AS schedule_name, \n")
+                    .append("    max(schedule_priority) AS schedule_priority, \n")
+                    .append("    min(sch_from_date)     AS sch_from_date, \n")
+                    .append("    max(sch_to_date)       AS sch_to_date, \n")
+                    .append("    COALESCE( \n")
+                    .append("      bool_or(matches_filter) FILTER (WHERE schedule_content_id IS NOT NULL AND entity_id IS NOT NULL), \n")
+                    .append("      false \n")
+                    .append("    ) AS has_match \n")
+                    .append("  FROM base_f \n")
+                    .append("  GROUP BY day, schedule_id \n")
+                    .append("), \n")
+
+                    // content_agg: chỉ aggregate contents match entityName (nếu có truyền entityName)
+                    .append("content_agg AS ( \n")
+                    .append("  SELECT \n")
+                    .append("    day, schedule_id, \n")
+                    .append("    jsonb_agg( \n")
+                    .append("      jsonb_build_object( \n")
+                    .append("        'orderBy',    content_order_by, \n")
+                    .append("        'number',     content_number, \n")
+                    .append("        'duration',   content_duration, \n")
+                    .append("        'timePeriod', CASE \n")
+                    .append("                        WHEN content_time_period IS NULL THEN CAST('[]' AS jsonb) \n")
+                    .append("                        WHEN jsonb_typeof(content_time_period) = 'array' THEN content_time_period \n")
+                    .append("                        ELSE jsonb_build_array(content_time_period) \n")
+                    .append("                      END, \n")
+                    .append("        'contentType', norm_type, \n")
+                    .append("        'entityId',    entity_id, \n")
+                    .append("        'entityName',  entity_name_effective, \n")
+                    .append("        'liveUrl',     live_channel_url \n")
+                    .append("      ) \n")
+                    .append("      ORDER BY content_order_by NULLS LAST \n")
+                    .append("    ) FILTER ( \n")
+                    .append("      WHERE schedule_content_id IS NOT NULL \n")
+                    .append("        AND entity_id IS NOT NULL \n")
+                    .append("        AND matches_filter = true \n")
+                    .append("    ) AS contents \n")
+                    .append("  FROM base_f \n")
+                    .append("  GROUP BY day, schedule_id \n")
+                    .append("), \n")
+
+                    // schedule_agg: lọc schedule theo entityName bằng has_match
+                    .append("schedule_agg AS ( \n")
+                    .append("  SELECT \n")
+                    .append("    m.day, \n")
+                    .append("    jsonb_build_object( \n")
+                    .append("      'scheduleId',    m.schedule_id, \n")
+                    .append("      'code',          m.schedule_code, \n")
+                    .append("      'name',          m.schedule_name, \n")
+                    .append("      'priority',      m.schedule_priority, \n")
+                    .append("      'sch_from_date', m.sch_from_date, \n")
+                    .append("      'sch_to_date',   m.sch_to_date, \n")
+                    .append("      'contents',      COALESCE(c.contents, CAST('[]' AS jsonb)) \n")
+                    .append("    ) AS schedule_json \n")
+                    .append("  FROM schedule_meta m \n")
+                    .append("  LEFT JOIN content_agg c \n")
+                    .append("    ON c.day = m.day AND c.schedule_id = m.schedule_id \n")
+                    .append("  WHERE ( \n")
+                    .append("    (:entityName = '' AND :playlistName = '' AND :liveChannelTitle = '' AND :contentType = '') \n")
+                    .append("    OR m.has_match = true \n")
+                    .append("  ) \n")
+                    .append(") \n")
+                    .append(", \n")
+
+                    // day_agg: sort priority an toàn (priority varchar)
+                    .append("day_agg AS ( \n")
+                    .append("  SELECT \n")
+                    .append("    day, \n")
+                    .append("    count(*) AS schedule_count, \n")
+                    .append("    jsonb_agg( \n")
+                    .append("      schedule_json \n")
+                    .append("      ORDER BY \n")
+                    .append("        CASE \n")
+                    .append("          WHEN (schedule_json->>'priority') ~ '^[0-9]+$' THEN CAST(schedule_json->>'priority' AS integer) \n")
+                    .append("          ELSE NULL \n")
+                    .append("        END DESC NULLS LAST, \n")
+                    .append("        (schedule_json->>'priority') DESC NULLS LAST \n")
+                    .append("    ) AS schedules \n")
+                    .append("  FROM schedule_agg \n")
+                    .append("  GROUP BY day \n")
+                    .append(") \n")
+
+                    .append("SELECT \n")
+                    .append("  d.day, \n")
+                    .append("  COALESCE(a.schedule_count, 0) AS schedule_count, \n")
+                    .append("  COALESCE(a.schedules, CAST('[]' AS jsonb)) AS schedules \n")
+                    .append("FROM days d \n")
+                    .append("LEFT JOIN day_agg a ON a.day = d.day \n")
+                    .append("ORDER BY d.day \n");
+
+            Query query = em.createNativeQuery(sql.toString());
+            query.setParameter("viewStart", viewStart, TemporalType.TIMESTAMP);
+            query.setParameter("viewEnd", viewEnd, TemporalType.TIMESTAMP);
+            query.setParameter("approvalStatus", approvalStatus);
+
+            // new params
+            query.setParameter("priority", priorityParam);
+            query.setParameter("entityName", entityNameParam);
+
+            query.setParameter("playlistName", playlistNameParam);
+            query.setParameter("liveChannelTitle", liveChannelTitleParam);
+
+            query.setParameter("contentType", contentTypeParam);
+
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = query.getResultList();
+
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.registerModule(new JavaTimeModule());
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+            List<CalendarDayDTO> result = new ArrayList<>(rows.size());
+
+            for (Object[] r : rows) {
+                LocalDate day = ((java.sql.Date) r[0]).toLocalDate();
+                int scheduleCount = (r[1] == null) ? 0 : ((Number) r[1]).intValue();
+
+                Object schedulesObj = r[2];
+                String schedulesJson;
+                if (schedulesObj == null) {
+                    schedulesJson = "[]";
+                } else if (schedulesObj instanceof PGobject) {
+                    schedulesJson = ((PGobject) schedulesObj).getValue();
+                } else {
+                    schedulesJson = schedulesObj.toString();
+                }
+
+                List<ScheduleDTO> schedules;
+                try {
+                    schedules = mapper.readValue(schedulesJson, new TypeReference<List<ScheduleDTO>>() {});
+                } catch (Exception ex) {
+                    schedules = Collections.emptyList();
+                }
+
+
+                result.add(new CalendarDayDTO(day, scheduleCount, schedules));
+            }
+
+            return result;
+        });
+    }
+
+    private static Timestamp parseTimestamp(String input) {
+        if (input == null || input.trim().isEmpty()) return null;
+
+        String v = input.trim();
+        // chấp nhận "2025-12-01T00:00:00" -> "2025-12-01 00:00:00"
+        v = v.replace('T', ' ');
+        return Timestamp.valueOf(v);
+    }
+
+    public Boolean updateScheduleComposite(UpdateScheduleRequest request,User user) {
+        persistenceService.doReturningTransaction(em -> {
+            try {
+                Timestamp now = new Timestamp(System.currentTimeMillis());
+                String updatedBy = "system"; // Hoặc lấy từ request user
+
+                // Lấy ID từ request (Giả sử request có trường Id)
+                Integer scheduleIdInt = request.getId();
+                if (scheduleIdInt == null) {
+                    throw new RuntimeException("ID lịch không được để trống khi cập nhật.");
+                }
+                String scheduleIdStr = String.valueOf(scheduleIdInt);
+
+                // Xử lý active
+                int activeVal = (request.getActive() != null && request.getActive()) ? 1 : 0;
+
+                // ------------------------------------------------------------------
+                // BƯỚC 1: CHUẨN BỊ DỮ LIỆU & VALIDATE (Giống hệt Create)
+                // ------------------------------------------------------------------
+                ScheduleInfo infoParams = new ScheduleInfo();
+                infoParams.setSchType(request.getSchType());
+                infoParams.setSchFromDate(request.getSchFromDate());
+                infoParams.setSchToDate(request.getSchToDate());
+                infoParams.setSchRepeatOccu(request.getSchRepeatOccu());
+
+                // Validate logic nghiệp vụ (Always, Anocc, Reocc)
+                validateScheduleType(infoParams);
+
+                // ------------------------------------------------------------------
+                // BƯỚC 2: UPDATE SCHEDULE_INFO
+                // ------------------------------------------------------------------
+                StringBuilder sqlUpdateInfo = new StringBuilder();
+                sqlUpdateInfo.append("UPDATE openremote.schedule_info SET ")
+                        .append("  schedule_code = :code, ")
+                        .append("  schedule_name = :name, ")
+                        .append("  active = :active, ")
+                        .append("  sch_type = :type, ")
+                        .append("  sch_from_date = :fromDate, ")
+                        .append("  sch_to_date = :toDate, ")
+                        .append("  sch_repeat_occu = :repeat, ")
+                        .append("  priority = :priority, ")
+                        .append("  description = :desc, ")
+                        .append("  news_category_id = :catId, ")
+                        .append("  bit_rate = :bitRate, ")
+                        .append("  update_date = :updateDate, ")
+                        .append("  update_by = :updateBy ")
+                        // Reset trạng thái duyệt nếu cần thiết khi update
+                        .append("  , approval_status = 'PENDING', status_approved = 0 ")
+                        .append("WHERE id = :id");
+
+                Query queryInfo = em.createNativeQuery(sqlUpdateInfo.toString());
+
+                queryInfo.setParameter("id", scheduleIdInt);
+                queryInfo.setParameter("code", request.getScheduleCode());
+                queryInfo.setParameter("name", request.getScheduleName());
+                queryInfo.setParameter("active", activeVal);
+
+                // Dùng dữ liệu đã qua hàm validate
+                queryInfo.setParameter("type", infoParams.getSchType());
+                queryInfo.setParameter("fromDate", infoParams.getSchFromDate());
+                queryInfo.setParameter("toDate", infoParams.getSchToDate());
+                queryInfo.setParameter("repeat", infoParams.getSchRepeatOccu());
+
+                queryInfo.setParameter("priority", request.getPriority());
+                queryInfo.setParameter("desc", request.getDescription());
+                queryInfo.setParameter("catId", request.getNewsCategoryId());
+                queryInfo.setParameter("bitRate", request.getBitRate());
+
+                queryInfo.setParameter("updateDate", now);
+                queryInfo.setParameter("updateBy", user.getUsername());
+
+                int rowsUpdated = queryInfo.executeUpdate();
+                if (rowsUpdated == 0) {
+                    throw new RuntimeException("Không tìm thấy bản ghi lịch với ID: " + scheduleIdInt);
+                }
+
+                // ------------------------------------------------------------------
+                // BƯỚC 3: XỬ LÝ ASSET (Xóa cũ -> Thêm mới)
+                // ------------------------------------------------------------------
+                // 3.1 Xóa Asset cũ (Hard delete hoặc Soft delete tùy quy định, ở đây dùng Hard delete để làm sạch quan hệ)
+                String sqlDeleteAssets = "DELETE FROM openremote.schedule_asset WHERE schedule_id = :schId";
+                em.createNativeQuery(sqlDeleteAssets).setParameter("schId", scheduleIdStr).executeUpdate();
+
+                // 3.2 Insert Asset mới (Logic giống Create)
+                if (request.getAssetIds() != null && !request.getAssetIds().isEmpty()) {
+                    String sqlInsertAsset = "INSERT INTO openremote.schedule_asset " +
+                            "(id, schedule_id, asset_id, realm_name, status, created_at, created_by, is_deleted) " +
+                            "VALUES (:id, :schId, :assetId, :realm, 1, :createdAt, :createdBy, false)";
+
+                    String realm = "master"; // Hoặc lấy từ DB nếu cần giữ nguyên realm cũ
+
+                    for (String assetId : request.getAssetIds()) {
+                        if (assetId == null || assetId.isEmpty()) continue;
+
+                        em.createNativeQuery(sqlInsertAsset)
+                                .setParameter("id", UUID.randomUUID().toString())
+                                .setParameter("schId", scheduleIdStr)
+                                .setParameter("assetId", assetId)
+                                .setParameter("realm", realm)
+                                .setParameter("createdAt", now)
+                                .setParameter("createdBy", user.getUsername())
+                                .executeUpdate();
+                    }
+                }
+
+                // ------------------------------------------------------------------
+                // BƯỚC 4: XỬ LÝ CONTENT (Xóa cũ -> Thêm mới)
+                // ------------------------------------------------------------------
+                // 4.1 Xóa Content Type cũ (Phải xóa bảng con trước vì khóa ngoại)
+                // Tìm các content_id thuộc schedule này để xóa type tương ứng
+                String sqlDeleteContentType = "DELETE FROM openremote.schedule_content_type " +
+                        "WHERE schedule_content_id IN (SELECT id FROM openremote.schedule_content WHERE schedule_id = :schId)";
+                em.createNativeQuery(sqlDeleteContentType).setParameter("schId", scheduleIdStr).executeUpdate();
+
+                // 4.2 Xóa Content cũ
+                String sqlDeleteContent = "DELETE FROM openremote.schedule_content WHERE schedule_id = :schId";
+                em.createNativeQuery(sqlDeleteContent).setParameter("schId", scheduleIdStr).executeUpdate();
+
+                // 4.3 Insert Content mới (Logic giống Create)
+                if (request.getContents() != null && !request.getContents().isEmpty()) {
+                    ObjectMapper mapper = new ObjectMapper();
+                    String realm = "master";
+
+                    String sqlInsertContent = "INSERT INTO openremote.schedule_content (" +
+                            "  id, schedule_id, \"number\", duration, order_by, time_period, " +
+                            "  created_at, created_by, is_deleted " +
+                            ") VALUES (" +
+                            "  :id, :schId, :number, CAST(:duration AS interval), :orderBy, CAST(:timePeriod AS jsonb), " +
+                            "  :createdAt, :createdBy, false " +
+                            ")";
+
+                    String sqlInsertContentType = "INSERT INTO openremote.schedule_content_type (" +
+                            "  id, \"type\", schedule_content_id, entity_id, entity_name, " +
+                            "  realm_name, created_at, created_by, is_deleted " +
+                            ") VALUES (" +
+                            "  :id, :type, :contentId, :entityId, :entityName, " +
+                            "  :realm, :createdAt, :createdBy, false " +
+                            ")";
+
+                    for (ScheduleContentRequestDTO contentDto : request.getContents()) {
+                        String contentTimePeriodJson = null;
+                        if (contentDto.getTime_period() != null && !contentDto.getTime_period().isEmpty()) {
+                            contentTimePeriodJson = mapper.writeValueAsString(contentDto.getTime_period());
+                        }
+
+                        String contentId = UUID.randomUUID().toString();
+
+                        // Insert Content
+                        em.createNativeQuery(sqlInsertContent)
+                                .setParameter("id", contentId)
+                                .setParameter("schId", scheduleIdStr)
+                                .setParameter("number", contentDto.getNumber())
+                                .setParameter("duration", "00:00:00") // Hoặc tính lại duration nếu cần
+                                .setParameter("orderBy", contentDto.getOrderBy())
+                                .setParameter("timePeriod", contentTimePeriodJson)
+                                .setParameter("createdAt", now)
+                                .setParameter("createdBy", user.getUsername())
+                                .executeUpdate();
+
+                        // Insert Content Type
+                        em.createNativeQuery(sqlInsertContentType)
+                                .setParameter("id", UUID.randomUUID().toString())
+                                .setParameter("type", contentDto.getContentType())
+                                .setParameter("contentId", contentId)
+                                .setParameter("entityId", contentDto.getEntityId())
+                                .setParameter("entityName", contentDto.getEntityName())
+                                .setParameter("realm", realm)
+                                .setParameter("createdAt", now)
+                                .setParameter("createdBy", user.getUsername())
+                                .executeUpdate();
+                    }
+                }
+
+                return true; // Hoặc trả về ID
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException("Lỗi khi cập nhật lịch phát: " + e.getMessage(), e);
+            }
+        });
+        return true;
+    }
+
+    private static String trimToNull(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
     }
 }
 

@@ -14,14 +14,14 @@ import "@openremote/or-translate";
 
 @customElement("ward-create")
 export class WardCreate extends LitElement {
-    @state() private districts = [];
+    @state() private provinces = [];
     @state() private vietnamWards = [];
     @state() private newWard = { name: "", status: "1", createBy: "", createDate: "" };
-    @state() private selectedDistrictId = "";
+    @state() private selectedProvinceId = "";
     @state() private notification = { show: false, message: "", isError: false };
     @state() private errors = {
         name: "",
-        districtId: "",
+        provinceId: "",
         duplicate: ""
     };
 
@@ -170,27 +170,27 @@ export class WardCreate extends LitElement {
         }, 3000);
     }
 
-    async fetchDistricts() {
+    async fetchProvinces() {
         try {
             const filterDTO = {
                 page: 1,
-                size: 50,
+                size: 100,
                 data: {}
             };
 
-            const response = await manager.rest.api.DistrictResource.getData(filterDTO);
+            const response = await manager.rest.api.ProvinceResource.getAll(filterDTO as any);
 
             if (response?.data) {
-                this.districts = response.data.filter(district => district.deleted === 0);
+                this.provinces = response.data.filter(province => province.deleted === 0);
             }
         } catch (error) {
-            console.error("Error loading districts:", error);
-            this.showNotification("load_district_error", true);
+            console.error("Error loading provinces:", error);
+            this.showNotification("load_province_error", true);
         }
     }
 
-    async fetchWardsByDistrict(districtId) {
-        if (!districtId) {
+    async fetchWardsByProvince(provinceId) {
+        if (!provinceId) {
             this.vietnamWards = [];
             return;
         }
@@ -198,13 +198,13 @@ export class WardCreate extends LitElement {
         try {
             const filterDTO = {
                 page: 1,
-                size: 50,
+                size: 100,
                 data: {
-                    districtId: districtId
+                    provinceId: provinceId
                 }
             };
 
-            const response = await manager.rest.api.WardResource.getAll(filterDTO);
+            const response = await manager.rest.api.WardResource.getAll(filterDTO as any);
 
             if (response?.data) {
                 this.vietnamWards = response.data
@@ -216,20 +216,20 @@ export class WardCreate extends LitElement {
         }
     }
 
-    private async validateWardName(districtId: number, wardName: string): Promise<boolean> {
-        if (!districtId || !wardName.trim()) return false;
+    private async validateWardName(provinceId: number, wardName: string): Promise<boolean> {
+        if (!provinceId || !wardName.trim()) return false;
 
         try {
             const filterDTO = {
                 page: 1,
-                size: 50,
+                size: 100,
                 data: {
-                    districtId: districtId,
+                    provinceId: provinceId,
                     name: wardName.trim()
                 }
             };
 
-            const response = await manager.rest.api.WardResource.getAll(filterDTO);
+            const response = await manager.rest.api.WardResource.getAll(filterDTO as any);
 
             return response?.data?.some(ward =>
                 ward.deleted === 0 &&
@@ -242,20 +242,20 @@ export class WardCreate extends LitElement {
     }
 
     firstUpdated() {
-        this.fetchDistricts();
+        this.fetchProvinces();
     }
 
     connectedCallback() {
         super.connectedCallback();
-        this.fetchDistricts();
+        this.fetchProvinces();
     }
 
     private async addWard() {
-        this.errors = { name: "", districtId: "", duplicate: "" };
+        this.errors = { name: "", provinceId: "", duplicate: "" };
         let hasError = false;
 
-        if (!this.selectedDistrictId) {
-            this.errors = { ...this.errors, districtId: "required_district" };
+        if (!this.selectedProvinceId) {
+            this.errors = { ...this.errors, provinceId: "required_province" };
             hasError = true;
         }
 
@@ -267,7 +267,7 @@ export class WardCreate extends LitElement {
         if (hasError) return;
 
         const isDuplicate = await this.validateWardName(
-            parseInt(this.selectedDistrictId),
+            parseInt(this.selectedProvinceId),
             this.newWard.name
         );
 
@@ -282,17 +282,17 @@ export class WardCreate extends LitElement {
 
             const wardData = {
                 name: this.newWard.name.trim(),
-                districtId: parseInt(this.selectedDistrictId),
+                provinceId: parseInt(this.selectedProvinceId),
                 createBy: currentUser
             };
 
-            const response = await manager.rest.api.WardResource.createProvince(wardData);
+            const response = await manager.rest.api.WardResource.createProvince(wardData as any);
 
             if (response?.data) {
                 this.showNotification("ward_create_success");
                 this.newWard = { name: "", status: "1", createBy: "", createDate: "" };
-                this.selectedDistrictId = "";
-                this.errors = { name: "", districtId: "", duplicate: "" };
+                this.selectedProvinceId = "";
+                this.errors = { name: "", provinceId: "", duplicate: "" };
                 setTimeout(() => {
                     this.navigateToMasterData();
                 }, 2000);
@@ -335,32 +335,32 @@ export class WardCreate extends LitElement {
                         <div class="form-grid">
                             <div>
                                 <vaadin-combo-box
-                                        .items="${this.districts.map(d => ({ label: d.name, value: d.id.toString() }))}"
+                                        .items="${this.provinces.map(p => ({ label: p.name, value: p.id.toString() }))}"
                                         item-label-path="label"
                                         item-value-path="value"
-                                        placeholder="Chọn quận/huyện"
-                                        .value="${this.selectedDistrictId}"
+                                        placeholder="Chọn tỉnh/thành phố"
+                                        .value="${this.selectedProvinceId}"
                                         @value-changed="${(e) => {
-                                            this.selectedDistrictId = e.detail.value;
-                                            this.fetchWardsByDistrict(e.detail.value);
-                                            this.errors = { ...this.errors, districtId: "", duplicate: "" };
-                                        }}"
+                this.selectedProvinceId = e.detail.value;
+                this.fetchWardsByProvince(e.detail.value);
+                this.errors = { ...this.errors, provinceId: "", duplicate: "" };
+            }}"
                                 >
                                     <label slot="label">
-                                        <or-translate value="district_name"></or-translate> <span style="color:red;">*</span>
+                                        <or-translate value="province_name"></or-translate> <span style="color:red;">*</span>
                                     </label>
                                 </vaadin-combo-box>
-                                ${this.errors.districtId ? html`<div class="error"><or-translate value="${this.errors.districtId}"></or-translate></div>` : ""}
+                                ${this.errors.provinceId ? html`<div class="error"><or-translate value="${this.errors.provinceId}"></or-translate></div>` : ""}
                             </div>
 
                             <div>
                                 <vaadin-text-field
                                         .value="${this.newWard.name}"
-                                        ?disabled="${!this.selectedDistrictId}"
+                                        ?disabled="${!this.selectedProvinceId}"
                                         @value-changed="${(e) => {
-                                            this.newWard.name = e.detail.value;
-                                            this.errors = { ...this.errors, name: "", duplicate: "" };
-                                        }}"
+                this.newWard.name = e.detail.value;
+                this.errors = { ...this.errors, name: "", duplicate: "" };
+            }}"
                                 >
                                     <label slot="label">
                                         <or-translate value="ward_name"></or-translate> <span style="color:red;">*</span>

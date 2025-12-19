@@ -64,16 +64,16 @@ public class WardPersistenceService extends RouteBuilder implements ContainerSer
         try {
             return persistenceService.doReturningTransaction(em -> {
                 Long count = (Long) em.createNativeQuery(
-                                "SELECT COUNT(*) FROM md_ward WHERE LOWER(ward_name) = LOWER(?) AND deleted = 0 and district_id = ?")
+                                "SELECT COUNT(*) FROM md_ward WHERE LOWER(ward_name) = LOWER(?) AND deleted = 0 and province_id = ?")
                         .setParameter(1, ward.getName().trim())
-                        .setParameter(2, ward.getDistrictId())
+                        .setParameter(2, ward.getProvinceId())
                         .getSingleResult();
 
                 if (count != null && count > 0) {
                     throw new DistrictException(AttributeWriteFailure.ALREADY_EXISTS, "Tên xã/phường '" + ward.getName() + "' đã tồn tại!");
                 }
                 Integer wardId = (Integer) em.createNativeQuery(
-                                "INSERT INTO md_ward (ward_name, active, deleted, create_date, create_by, update_date, update_by, district_id) " +
+                                "INSERT INTO md_ward (ward_name, active, deleted, create_date, create_by, update_date, update_by, province_id) " +
                                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING ward_id")
                         .setParameter(1, ward.getName().trim())
                         .setParameter(2, 1)
@@ -82,7 +82,7 @@ public class WardPersistenceService extends RouteBuilder implements ContainerSer
                         .setParameter(5, ward.getCreateBy())
                         .setParameter(6, LocalDateTime.now())
                         .setParameter(7, ward.getUpdateBy())
-                        .setParameter(8, ward.getDistrictId())
+                        .setParameter(8, ward.getProvinceId())
                         .getSingleResult();
 
                 ward.setId(wardId);
@@ -101,15 +101,15 @@ public class WardPersistenceService extends RouteBuilder implements ContainerSer
 
     public List<Ward> getAll(SearchFilterDTO<Ward> searchFilterDTO) {
         return persistenceService.doReturningTransaction(em -> {
-            String baseQuery = "SELECT ward_id, ward_name, active, deleted, create_by, update_by, create_date, update_date, district_id " +
+            String baseQuery = "SELECT ward_id, ward_name, active, deleted, create_by, update_by, create_date, update_date, province_id " +
                     "FROM md_ward WHERE deleted = 0";
 
             if (validationUtils.isValid(searchFilterDTO.getData())) {
                 if (validationUtils.isValid(searchFilterDTO.getData().getName())) {
                         baseQuery += " AND LOWER(ward_name) LIKE LOWER(:wardName)";
                 }
-                if (validationUtils.isValid(searchFilterDTO.getData().getDistrictId())) {
-                    baseQuery += " AND DISTRICT_ID = :districtId";
+                if (validationUtils.isValid(searchFilterDTO.getData().getProvinceId())) {
+                    baseQuery += " AND province_id = :provinceId";
                 }
             }
 
@@ -121,8 +121,8 @@ public class WardPersistenceService extends RouteBuilder implements ContainerSer
                 if (validationUtils.isValid(searchFilterDTO.getData().getName())) {
                         query.setParameter("wardName", "%" + searchFilterDTO.getData().getName().trim() + "%");
                 }
-                if (validationUtils.isValid(searchFilterDTO.getData().getDistrictId())) {
-                    query.setParameter("districtId", searchFilterDTO.getData().getDistrictId());
+                if (validationUtils.isValid(searchFilterDTO.getData().getProvinceId())) {
+                    query.setParameter("provinceId", searchFilterDTO.getData().getProvinceId());
                 }
             }
 
@@ -140,13 +140,13 @@ public class WardPersistenceService extends RouteBuilder implements ContainerSer
         persistenceService.doReturningTransaction(em -> {
             em.createNativeQuery(
                             "UPDATE md_ward " +
-                                    "SET ward_name = ?, active = ?, update_date = ?, update_by = ?, district_id = ? " +
+                                    "SET ward_name = ?, active = ?, update_date = ?, update_by = ?, province_id = ? " +
                                     "WHERE ward_id = ?")
                     .setParameter(1, ward.getName())
                     .setParameter(2, ward.getActive())
                     .setParameter(3, LocalDateTime.now())
                     .setParameter(4, ward.getUpdateBy())
-                    .setParameter(5, ward.getDistrictId())
+                    .setParameter(5, ward.getProvinceId())
                     .setParameter(6, ward.getId())
                     .executeUpdate();
             return null;

@@ -7,11 +7,15 @@ import org.openremote.container.timer.TimerService;
 import org.openremote.manager.security.ManagerIdentityService;
 import org.openremote.manager.web.ManagerWebResource;
 import org.openremote.model.PersistenceEvent;
-import org.openremote.model.Schedule.CreateScheduleRequest;
-import org.openremote.model.Schedule.ScheduleCompositeDetailDTO;
+import org.openremote.model.Schedule.*;
+
+import java.sql.Timestamp;
+
+import org.openremote.model.dto.ScheduleSearchDTO;
 import org.openremote.model.dto.SearchFilterDTO;
 import org.openremote.model.exception.ExceptionCommon;
 import org.openremote.model.scheduleinfo.*;
+import org.openremote.model.security.User;
 
 import java.util.List;
 
@@ -28,7 +32,7 @@ public class ScheduleInfoResourceImpl extends ManagerWebResource implements Sche
     }
 
     @Override
-    public List<ScheduleInfo> getData(SearchFilterDTO<ScheduleInfo> filterDTO) {
+    public List<ScheduleInfo> getData(ScheduleSearchDTO<ScheduleInfo> filterDTO) {
         return scheduleInfoPersistenceService.getAll(filterDTO);
     }
 
@@ -51,6 +55,18 @@ public class ScheduleInfoResourceImpl extends ManagerWebResource implements Sche
     }
 
     @Override
+    public List<ScheduleInfo> updateStatusSchedule(UpdateScheduleStatusRequestDTO requestDTO) {
+        if (  requestDTO.getScheduleInfos() == null){
+            throw new ExceptionCommon("ASSET_ERROR", "Vui lòng chọn lịch phát!");
+        }
+
+        return scheduleInfoPersistenceService.updateStatusBySchedule(
+                requestDTO.getScheduleInfos(),
+                requestDTO.getStatus()
+        );
+    }
+
+    @Override
     public void insertScheduleAsset(List<Integer> scheduleIds, String assetId, String typeAsset) {
         for (Integer s : scheduleIds) {
             scheduleInfoPersistenceService.insertScheduleAsset2(s, assetId, typeAsset);
@@ -58,7 +74,7 @@ public class ScheduleInfoResourceImpl extends ManagerWebResource implements Sche
     }
 
     @Override
-    public Long countData(SearchFilterDTO<ScheduleInfo> filterDTO) {
+    public Long countData(ScheduleSearchDTO<ScheduleInfo> filterDTO) {
         return scheduleInfoPersistenceService.countData(filterDTO);
     }
 
@@ -206,7 +222,9 @@ public class ScheduleInfoResourceImpl extends ManagerWebResource implements Sche
 
         try {
             // Gọi xuống Service đã viết ở bước trước
-            return scheduleInfoPersistenceService.createScheduleComposite(request);
+            User user = identityService.getIdentityProvider().getUser(getUserId());
+            request.setRealm_name(user.getRealm());
+            return scheduleInfoPersistenceService.createScheduleComposite(request , user);
         } catch (Exception e) {
             e.printStackTrace();
             throw new WebApplicationException(
@@ -252,6 +270,69 @@ public class ScheduleInfoResourceImpl extends ManagerWebResource implements Sche
             throw new WebApplicationException(
                     Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                             .entity(new ErrorMessage("Lỗi server khi lấy chi tiết lịch: " + e.getMessage()))
+                            .build()
+            );
+        }
+    }
+    @Override
+    public List<CalendarDayDTO> getCalendarMonthSchedules(CalendarMonthSchedulesRequest request) {
+        return scheduleInfoPersistenceService.getCalendarMonthSchedules(request);
+    }
+
+    @Override
+    public Response updateScheduleComposite(UpdateScheduleRequest request) {
+        // 1. VALIDATE CƠ BẢN (Tầng Controller)
+        if (request == null) {
+            throw new WebApplicationException(
+                    Response.status(Response.Status.BAD_REQUEST)
+                            .entity(new ErrorMessage("Dữ liệu cập nhật không được để trống."))
+                            .build()
+            );
+        }
+
+        if (request.getId() == null) {
+            throw new WebApplicationException(
+                    Response.status(Response.Status.BAD_REQUEST)
+                            .entity(new ErrorMessage("Vui lòng cung cấp ID lịch cần cập nhật."))
+                            .build()
+            );
+        }
+
+        // Kiểm tra tên lịch (nếu bắt buộc)
+        if (request.getScheduleName() == null || request.getScheduleName().trim().isEmpty()) {
+            throw new WebApplicationException(
+                    Response.status(Response.Status.BAD_REQUEST)
+                            .entity(new ErrorMessage("Tên lịch phát không được để trống."))
+                            .build()
+            );
+        }
+
+        try {
+            // 2. GỌI SERVICE (Hàm bạn đã viết ở bước trước)
+            // Giả sử hàm service của bạn trả về void hoặc boolean
+            User user = identityService.getIdentityProvider().getUser(getUserId());
+            request.setRealm_name(user.getRealm());
+            scheduleInfoPersistenceService.updateScheduleComposite(request,user);
+
+            // 3. TRẢ VỀ KẾT QUẢ THÀNH CÔNG
+            return Response.ok()
+                    .entity(new ErrorMessage("Cập nhật lịch phát thành công.")) // Hoặc trả về object nếu muốn
+                    .build();
+
+        } catch (RuntimeException re) {
+            // Bắt các lỗi validation logic từ Service (ví dụ: Không tìm thấy ID)
+            re.printStackTrace();
+            throw new WebApplicationException(
+                    Response.status(Response.Status.BAD_REQUEST)
+                            .entity(new ErrorMessage(re.getMessage()))
+                            .build()
+            );
+        } catch (Exception e) {
+            // Bắt lỗi hệ thống (DB connection, SQL error...)
+            e.printStackTrace();
+            throw new WebApplicationException(
+                    Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                            .entity(new ErrorMessage("Lỗi hệ thống: " + e.getMessage()))
                             .build()
             );
         }

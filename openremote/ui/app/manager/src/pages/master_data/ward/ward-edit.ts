@@ -15,7 +15,7 @@ interface Ward {
     status: string;
     createdBy: string;
     createdDate: string;
-    districtId?: number;
+    provinceId?: number;
 }
 
 @customElement("ward-edit")
@@ -26,7 +26,7 @@ export class WardEdit extends LitElement {
     @state() private isSaving = false;
     @state() private errorMessage = "";
     @state() private notification = { show: false, message: "", isError: false };
-    @state() private districts: Array<{id: number, name: string}> = [];
+    @state() private provinces: Array<{ id: number, name: string }> = [];
 
     static styles = css`
         :host {
@@ -183,43 +183,43 @@ export class WardEdit extends LitElement {
             status: params.get("active") === "1" ? "Hoạt động" : "Không hoạt động",
             createdBy: params.get("createdBy") || "",
             createdDate: params.get("createdDate") || "",
-            districtId: params.get("districtId") ? parseInt(params.get("districtId")) : undefined
+            provinceId: params.get("provinceId") ? parseInt(params.get("provinceId")) : undefined
         };
 
-        this.fetchDistricts();
+        this.fetchProvinces();
     }
 
-    async fetchDistricts() {
+    async fetchProvinces() {
         try {
-            const response = await manager.rest.api.DistrictResource.getData({
+            const response = await manager.rest.api.ProvinceResource.getAll({
                 page: 1,
                 size: 100,
                 data: {
                     active: 1,
                     deleted: 0
                 }
-            });
+            } as any);
 
             if (response?.data) {
-                this.districts = response.data.map(district => ({
-                    id: district.id,
-                    name: district.name
+                this.provinces = response.data.map(province => ({
+                    id: province.id,
+                    name: province.name
                 }));
 
                 this.ward = {
                     ...this.ward,
-                    districtId: Number(this.ward.districtId) || null
+                    provinceId: Number(this.ward.provinceId) || null
                 };
             } else {
-                console.error("No district data returned");
-                this.districts = [];
+                console.error("No province data returned");
+                this.provinces = [];
             }
-            console.log("Districts: ", this.districts);
-            console.log("Current districtId: ", this.ward.districtId);
+            console.log("Provinces: ", this.provinces);
+            console.log("Current provinceId: ", this.ward.provinceId);
 
         } catch (error) {
-            console.error("Error fetching districts:", error);
-            this.showNotification("Failed to load districts", true);
+            console.error("Error fetching provinces:", error);
+            this.showNotification("Failed to load provinces", true);
         }
     }
 
@@ -263,15 +263,15 @@ export class WardEdit extends LitElement {
 
                     <div class="form-grid">
                         <vaadin-combo-box
-                            .items="${this.districts}"
-                            .value="${Number(this.ward.districtId) || null}"
+                            .items="${this.provinces}"
+                            .value="${Number(this.ward.provinceId) || null}"
                             item-label-path="name"
                             item-value-path="id"
-                            id="districtId"
+                            id="provinceId"
                             @value-changed="${(e: CustomEvent) => {
-            this.ward.districtId = Number(e.detail.value);
-        }}">
-                            <label slot="label">${i18next.t("District")} <span style="color: red;">*</span></label>
+                this.ward.provinceId = Number(e.detail.value);
+            }}">
+                            <label slot="label">${i18next.t("Province")} <span style="color: red;">*</span></label>
                         </vaadin-combo-box>
 
                         <vaadin-text-field
@@ -289,9 +289,9 @@ export class WardEdit extends LitElement {
                             theme="medium"
                             .value="${this.ward.status === 'Hoạt động' ? '1' : '0'}"
                             .items="${[
-            { label: i18next.t('Active'), value: '1' },
-            { label: i18next.t('Inactive'), value: '0' }
-        ]}">
+                { label: i18next.t('Active'), value: '1' },
+                { label: i18next.t('Inactive'), value: '0' }
+            ]}">
                         </vaadin-select>
                     </div>
                 </div>
@@ -304,15 +304,15 @@ export class WardEdit extends LitElement {
     saveChanges() {
         const wardInput = this.shadowRoot?.getElementById('ward') as HTMLInputElement;
         const statusSelect = this.shadowRoot?.getElementById('status') as any;
-        const districtSelect = this.shadowRoot?.getElementById('districtId') as any;
+        const provinceSelect = this.shadowRoot?.getElementById('provinceId') as any;
 
         if (!wardInput?.value.trim()) {
             this.showNotification("Vui lòng nhập tên phường/xã", true);
             return;
         }
 
-        if (!districtSelect?.value) {
-            this.showNotification("Vui lòng chọn quận/huyện", true);
+        if (!provinceSelect?.value) {
+            this.showNotification("Vui lòng chọn tỉnh/thành phố", true);
             return;
         }
 
@@ -322,11 +322,11 @@ export class WardEdit extends LitElement {
         this.updateWard(
             wardInput.value.trim(),
             statusSelect.value,
-            parseInt(districtSelect.value)
+            parseInt(provinceSelect.value)
         );
     }
 
-    updateWard(wardName: string, status: string, districtId: number) {
+    updateWard(wardName: string, status: string, provinceId: number) {
         const isActive = status === "1";
 
         const updatedWard: any = {
@@ -334,7 +334,7 @@ export class WardEdit extends LitElement {
             name: wardName,
             active: isActive ? 1 : 0,
             deleted: isActive ? 0 : 1,
-            districtId: districtId
+            provinceId: provinceId
         };
 
         manager.rest.api.WardResource.update(updatedWard, {})

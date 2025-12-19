@@ -1,6 +1,8 @@
 const fs = require("fs");
 const path = require("path");
 const webpack = require("webpack");
+
+require("dotenv").config({ path: path.resolve(__dirname, ".env.local") });
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const ForkTsCheckerNotifierWebpackPlugin = require("fork-ts-checker-notifier-webpack-plugin");
@@ -17,7 +19,7 @@ function getStandardModuleRules() {
                 test: /\.css$/, //
                 exclude: /(maplibre|mapbox|@material|gridstack|@mdi).*\.css$/,
                 use: [
-                    {loader: "css-loader"}
+                    { loader: "css-loader" }
                 ]
             },
             {
@@ -51,7 +53,10 @@ function getAppConfig(mode, isDevServer, dirname, managerUrl, keycloakUrl, port)
 
 
     // if(keycloakUrl===undefined ||keycloakUrl===null|| keycloakUrl.trim()==="") {
-    keycloakUrl = "http://171.254.94.141:8081/auth";
+    // keycloakUrl = process.env.KEYCLOAK_URL || "http://171.254.94.233:8080/auth";
+    // managerUrl = process.env.MANAGER_URL || "http://171.254.94.141:9000";
+
+  keycloakUrl = "http://171.254.94.141:8081/auth";
   managerUrl = "http://171.254.94.141:9000";
 
 
@@ -85,7 +90,7 @@ function getAppConfig(mode, isDevServer, dirname, managerUrl, keycloakUrl, port)
             publicPath: "/" + dirname.split(path.sep).slice(-1)[0] + "/",
             filename: "[name].[contenthash].js"
         },
-        module: {...getStandardModuleRules()},
+        module: { ...getStandardModuleRules() },
         // optimization: {
         //     minimize: true,
         //     minimizer: [
@@ -301,7 +306,7 @@ function generateExports(dirname) {
                 library: libName,
                 libraryTarget: "umd"
             },
-            module: {...getStandardModuleRules()},
+            module: { ...getStandardModuleRules() },
             externals: generateExternals(bundle)
         };
     });

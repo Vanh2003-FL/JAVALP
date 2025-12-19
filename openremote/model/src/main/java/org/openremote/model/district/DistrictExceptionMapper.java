@@ -19,7 +19,7 @@ public class DistrictExceptionMapper implements ExceptionMapper<DistrictExceptio
         error.put("errorMessage", ex.getMessage());
         error.put("timestamp", LocalDateTime.now().toString());
 
-        return Response.status(Response.Status.OK)
+        return Response.status(Response.Status.BAD_REQUEST)
                 .entity(error)
                 .type(MediaType.APPLICATION_JSON)
                 .build();

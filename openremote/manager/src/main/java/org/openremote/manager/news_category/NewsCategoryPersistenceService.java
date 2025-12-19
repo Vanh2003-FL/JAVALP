@@ -10,7 +10,7 @@ import org.openremote.manager.web.ManagerWebService;
 import org.openremote.model.Container;
 import org.openremote.model.ContainerService;
 import org.openremote.model.dto.SearchFilterDTO;
-import org.openremote.model.news_category.NewsCategory;
+import org.openremote.model.NewsCategory.NewsCategory;
 import org.openremote.model.security.User;
 
 import java.util.List;

@@ -23,12 +23,13 @@ public class Ward {
     private String updateBy;
 
     private int districtId;
+    private int provinceId;
 
     public Ward() {
     }
 
     public Ward(int id, String districtName, int active, int deleted,
-                    String createBy, String updateBy, Timestamp createDate, Timestamp updateDate, Integer districtId) {
+                    String createBy, String updateBy, Timestamp createDate, Timestamp updateDate, Integer provinceId) {
         this.id = id;
         this.name = districtName;
         this.active = active;
@@ -37,7 +38,7 @@ public class Ward {
         this.updateBy = updateBy;
         this.createDate = createDate;
         this.updateDate = updateDate;
-        this.districtId = districtId;
+        this.provinceId = provinceId;
     }
 
     public int getId() {
@@ -110,5 +111,13 @@ public class Ward {
 
     public void setDistrictId(int districtId) {
         this.districtId = districtId;
+    }
+
+    public int getProvinceId() {
+        return provinceId;
+    }
+
+    public void setProvinceId(int provinceId) {
+        this.provinceId = provinceId;
     }
 }

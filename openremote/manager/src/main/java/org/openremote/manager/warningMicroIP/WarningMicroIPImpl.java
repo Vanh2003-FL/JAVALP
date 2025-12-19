@@ -1,5 +1,6 @@
 package org.openremote.manager.warningMicroIP;
 
+import jakarta.ws.rs.ForbiddenException;
 import org.openremote.container.persistence.PersistenceService;
 import org.openremote.container.timer.TimerService;
 import org.openremote.manager.security.ManagerIdentityService;
@@ -29,21 +30,31 @@ public class WarningMicroIPImpl extends ManagerWebResource implements WarningMic
     @Override
     public List<WarningMicroIP> getAllWarningMicroIP(SearchFilterDTO<WarningMicroIP> filterDTO) {
         User user = identityService.getIdentityProvider().getUser(getUserId());
+
+        if (user == null) {
+            throw new ForbiddenException("User not found");
+        }
         return warningMicroIPService.getAllWarningMicroIP(filterDTO == null ? new SearchFilterDTO<>() : filterDTO, user);
     }
 
     @Override
     public WarningMicroIP createWarningMicroIP(WarningMicroIP data) {
         User user = identityService.getIdentityProvider().getUser(getUserId());
+        if (user == null) {
+            throw new ForbiddenException("User not found");
+        }
         data.setRealm_name(user.getRealm());
-//        data.setCreate_by(user.getUsername());
+        data.setCreate_by(user.getUsername());
         return warningMicroIPService.createWarningMicroIP(data);
     }
 
     @Override
     public WarningMicroIP updateWarningMicroIP(WarningMicroIP data) {
-//        User user = identityService.getIdentityProvider().getUser(getUserId());
-//        data.setCreateBy(user.getUsername());
+        User user = identityService.getIdentityProvider().getUser(getUserId());
+        if (user == null) {
+            throw new ForbiddenException("User not found");
+        }
+        data.setUpdate_by(user.getUsername());
         return warningMicroIPService.updateWarningMicroIP(data);
     }
 
