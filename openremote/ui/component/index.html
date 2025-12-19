@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+
+    <title>Demo</title>
+</head>
+<body>
+<div id="info"></div>
+<br />
+<br />
+<div id="asset"></div>
+</body>
+<script src="core/dist/umd/index.orbundle.js"></script>
+<script src="or-asset-tree/dist/umd/index.bundle.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!--<script src="https://mbraak.github.io/jqTree/lib/jqtree.js"></script>-->
+
+<script>
+    ORCore.manager.init({
+        managerUrl: "http://localhost:8080",
+        keycloakUrl: "http://localhost:8080/auth",
+        auth: "KEYCLOAK",
+        autoLogin: true,
+        loadIcons: true,
+        realm: "demo",
+        configureTranslationsOptions: (options) => {
+            options.lng = "nl"; // Change initial language to dutch
+        }
+    }).then((success) => {
+        if (success) {
+
+            if (ORCore.manager.authenticated) {
+                console.log("AUTHENTICATED");
+            }
+        }
+    });
+</script>
+<!--<script type="module">-->
+<!--    // Import the functions you need from the SDKs you need-->
+<!--    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";-->
+<!--    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";-->
+<!--    // TODO: Add SDKs for Firebase products that you want to use-->
+<!--    // https://firebase.google.com/docs/web/setup#available-libraries-->
+
+<!--    // Your web app's Firebase configuration-->
+<!--    // For Firebase JS SDK v7.20.0 and later, measurementId is optional-->
+<!--    const firebaseConfig = {-->
+<!--        apiKey: "AIzaSyA-WjWtxJM4hQFG0tfrKhCTUSzWShn_wYA",-->
+<!--        authDomain: "manager-18478.firebaseapp.com",-->
+<!--        projectId: "manager-18478",-->
+<!--        storageBucket: "manager-18478.firebasestorage.app",-->
+<!--        messagingSenderId: "261302459547",-->
+<!--        appId: "1:261302459547:web:f11f6de1a14ef668307a3e",-->
+<!--        measurementId: "G-F9LFHZ7Q0X"-->
+<!--    };-->
+
+<!--    // Initialize Firebase-->
+<!--    const app = initializeApp(firebaseConfig);-->
+<!--    const analytics = getAnalytics(app);-->
+<!--    console.log(analytics)-->
+<!--</script>-->
+<or-icon icon="access-point"></or-icon>
+<or-map style="width: 500px; height: 500px"></or-map>
+<or-asset-tree style="width: 500px; height: 800px;" realm="demo"></or-asset-tree>
+</html>
